@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "baseUrl": ".",
+    "paths": {
+      "@yield-copilot/shared": ["packages/shared/src/index.ts"],
+      "@yield-copilot/agents": ["packages/agents/src/index.ts"],
+      "@yield-copilot/celo": ["packages/celo/src/index.ts"],
+      "@yield-copilot/ui": ["packages/ui/src/index.ts"]
+    }
+  }
+}
