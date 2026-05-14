@@ -4,6 +4,10 @@ import {
   executionPlanSchema,
   goalSchema,
   positionSchema,
+  quoteFreshnessSchema,
+  quoteSourceSchema,
+  recommendationActionSchema,
+  recommendationConfidenceSchema,
   recommendationRequestSchema,
   recommendationResponseSchema,
   riskComfortSchema,
@@ -21,6 +25,10 @@ export type Token = z.infer<typeof tokenSchema>;
 export type Goal = z.infer<typeof goalSchema>;
 export type RiskComfort = z.infer<typeof riskComfortSchema>;
 export type RiskLabel = z.infer<typeof riskLabelSchema>;
+export type QuoteFreshness = z.infer<typeof quoteFreshnessSchema>;
+export type QuoteSource = z.infer<typeof quoteSourceSchema>;
+export type RecommendationConfidence = z.infer<typeof recommendationConfidenceSchema>;
+export type RecommendationAction = z.infer<typeof recommendationActionSchema>;
 export type RecommendationRequest = z.infer<typeof recommendationRequestSchema>;
 export type VenueDefinition = z.infer<typeof venueDefinitionSchema>;
 export type VenueAvailability = z.infer<typeof venueAvailabilitySchema>;

@@ -4,10 +4,39 @@ import type { VenueResult } from "@yield-copilot/shared";
 type VenueCardProps = {
   heading: string;
   venue: VenueResult | null;
+  timeHorizonDays: number;
   featured?: boolean;
 };
 
-export function VenueCard({ heading, venue, featured = false }: VenueCardProps) {
+function formatUnits(amount: number) {
+  return amount.toFixed(2);
+}
+
+function formatUpdatedAt(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function getFreshnessLabel(venue: VenueResult) {
+  if (venue.freshnessStatus === "fresh") {
+    return "Fresh snapshot";
+  }
+
+  if (venue.freshnessStatus === "stale") {
+    return "Stale snapshot";
+  }
+
+  return "Unavailable";
+}
+
+export function VenueCard({
+  heading,
+  venue,
+  timeHorizonDays,
+  featured = false
+}: VenueCardProps) {
   if (!venue) {
     return (
       <section className="panel">
@@ -24,6 +53,12 @@ export function VenueCard({ heading, venue, featured = false }: VenueCardProps) 
         <div>
           <p className="section-label">{heading}</p>
           <h2>{venue.label}</h2>
+          <div className="meta-pill-row">
+            <span className={cx("meta-pill", `meta-pill-${venue.freshnessStatus}`)}>
+              {getFreshnessLabel(venue)}
+            </span>
+            <span className="meta-pill meta-pill-neutral">{venue.sourceLabel}</span>
+          </div>
         </div>
         <span className={cx("risk-pill", riskToneClassNames[venue.riskLabel])}>
           {venue.riskLabel}
@@ -37,8 +72,8 @@ export function VenueCard({ heading, venue, featured = false }: VenueCardProps) 
             <strong>{venue.apy.toFixed(2)}%</strong>
           </div>
           <div>
-            <span>Action</span>
-            <strong>{venue.actionLabel}</strong>
+            <span>Estimated net</span>
+            <strong>{formatUnits(venue.estimatedNetReturn)}</strong>
           </div>
         </div>
       ) : null}
@@ -49,22 +84,43 @@ export function VenueCard({ heading, venue, featured = false }: VenueCardProps) 
           <strong>{venue.apy.toFixed(2)}%</strong>
         </div>
         <div>
-          <span>Liquidity</span>
-          <strong>{venue.liquidityProfile}</strong>
+          <span>{timeHorizonDays}d net</span>
+          <strong>{formatUnits(venue.estimatedNetReturn)}</strong>
         </div>
         <div>
-          <span>Score</span>
-          <strong>{venue.score.toFixed(2)}</strong>
+          <span>Exit</span>
+          <strong>{venue.exitWindowLabel}</strong>
+        </div>
+        <div>
+          <span>One-time fee</span>
+          <strong>{formatUnits(venue.estimatedOneTimeFee)}</strong>
         </div>
       </div>
 
       <p>{venue.summary}</p>
+
+      <div className="notice-card compact stack-sm">
+        <p className="section-label">{featured ? "Why this fits" : "Key tradeoff"}</p>
+        <strong>{venue.actionLabel}</strong>
+        <p>{venue.tradeoffSummary}</p>
+      </div>
 
       <ul className={featured ? "bullet-list emphasis" : "bullet-list"}>
         {venue.rationale.slice(0, 3).map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
+
+      {venue.availabilityReasons.length > 0 ? (
+        <div className="warning-box">
+          <p className="section-label">Availability and timing</p>
+          <ul className="bullet-list compact">
+            {venue.availabilityReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="warning-box">
         <p className="section-label">Major risks</p>
@@ -74,6 +130,8 @@ export function VenueCard({ heading, venue, featured = false }: VenueCardProps) 
           ))}
         </ul>
       </div>
+
+      <p className="fine-print">Quote snapshot updated at {formatUpdatedAt(venue.quoteUpdatedAt)}.</p>
     </section>
   );
 }

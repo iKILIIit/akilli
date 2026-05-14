@@ -8,6 +8,14 @@ export const riskLabelSchema = z.enum([
   "Moderate complexity",
   "Higher protocol risk"
 ]);
+export const recommendationConfidenceSchema = z.enum([
+  "Strong fit",
+  "Good fit",
+  "Hold for now"
+]);
+export const recommendationActionSchema = z.enum(["move-funds", "stay-liquid"]);
+export const quoteSourceSchema = z.enum(["adapter-model", "mock-fallback"]);
+export const quoteFreshnessSchema = z.enum(["fresh", "stale", "unavailable"]);
 export const venueKindSchema = z.enum(["liquid", "native", "third-party"]);
 export const liquidityProfileSchema = z.enum(["instant", "same-day", "locked"]);
 
@@ -59,8 +67,16 @@ export const yieldQuoteSchema = z.object({
   thirdParty: z.boolean(),
   liquidityProfile: liquidityProfileSchema,
   lockupDays: z.number().int().min(0),
+  quoteSource: quoteSourceSchema,
+  freshnessStatus: quoteFreshnessSchema,
+  sourceLabel: z.string().min(1),
+  exitWindowLabel: z.string().min(1),
   summary: z.string().min(1),
-  guardrails: z.array(z.string()).min(1)
+  guardrails: z.array(z.string()).min(1),
+  estimatedGrossReturn: z.number().min(0),
+  estimatedNetReturn: z.number(),
+  estimatedOneTimeFee: z.number().min(0),
+  quoteUpdatedAt: z.string().datetime()
 });
 
 export const venueResultSchema = yieldQuoteSchema.extend({
@@ -69,7 +85,8 @@ export const venueResultSchema = yieldQuoteSchema.extend({
   riskReasons: z.array(z.string()).min(1),
   warnings: z.array(z.string()),
   rationale: z.array(z.string()).min(1),
-  actionLabel: z.string().min(1)
+  actionLabel: z.string().min(1),
+  tradeoffSummary: z.string().min(1)
 });
 
 export const executionStepSchema = z.object({
@@ -90,6 +107,10 @@ export const executionPlanSchema = z.object({
 export const recommendationResponseSchema = z.object({
   recommended: venueResultSchema,
   backup: venueResultSchema.nullable(),
+  consideredVenues: z.array(venueResultSchema).min(1),
+  confidence: recommendationConfidenceSchema,
+  recommendedAction: recommendationActionSchema,
+  decisionSummary: z.string().min(1),
   rationale: z.array(z.string()).min(1),
   warnings: z.array(z.string()),
   generatedAt: z.string().datetime(),

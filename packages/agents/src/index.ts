@@ -20,11 +20,15 @@ export function generateRecommendation(
     throw new Error("No supported venues are available for this request.");
   }
 
-  const summary = buildRecommendationSummary(ranked);
+  const summary = buildRecommendationSummary(input, ranked);
 
   return {
     recommended,
     backup: backup ?? null,
+    consideredVenues: ranked,
+    confidence: summary.confidence,
+    recommendedAction: summary.recommendedAction,
+    decisionSummary: summary.decisionSummary,
     rationale: summary.rationale,
     warnings: summary.warnings,
     generatedAt: new Date().toISOString(),

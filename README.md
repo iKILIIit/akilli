@@ -130,6 +130,29 @@ Expected local services:
 - mini app: `http://localhost:3000`
 - API: `http://localhost:4000`
 
+## Deploy on Vercel
+
+The current MVP frontend can be deployed to Vercel now.
+
+- Deploy `apps/miniapp` as its own Vercel project
+- Use the `Next.js` framework preset
+- Set the project's Root Directory to `apps/miniapp`
+- Keep the API in `apps/api` on a separate host unless you convert it to Vercel Functions or Next route handlers
+
+Recommended environment variables for the Vercel project:
+
+```bash
+NEXT_PUBLIC_APP_ENV=production
+NEXT_PUBLIC_DEFAULT_CHAIN=celo
+NEXT_PUBLIC_MINIPAY_ONLY=false
+NEXT_PUBLIC_SUPPORT_EMAIL=support@yieldcopilot.app
+```
+
+Notes:
+
+- The current recommendation flow is generated inside the Next app, so the frontend does not require the separate API to be deployed
+- The Node server in `apps/api` is not deployable to Vercel as a long-running process in its current form
+
 ## Environment variables
 
 The project ships with the following local defaults:
