@@ -137,6 +137,9 @@ The current MVP frontend can be deployed to Vercel now.
 - Deploy `apps/miniapp` as its own Vercel project
 - Use the `Next.js` framework preset
 - Set the project's Root Directory to `apps/miniapp`
+- Use Node.js 20 or newer
+- Keep the Install Command on Vercel's default `pnpm install`
+- Set the Build Command to `pnpm build`
 - Keep the API in `apps/api` on a separate host unless you convert it to Vercel Functions or Next route handlers
 
 Recommended environment variables for the Vercel project:
