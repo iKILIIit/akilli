@@ -129,7 +129,7 @@ function extractJson(text: string) {
     return trimmed.slice(first, last + 1);
   }
 
-  throw new Error("Anthropic response did not contain a JSON object.");
+  throw new Error("OpenAI response did not contain a JSON object.");
 }
 
 async function withRetry<T>(fn: () => Promise<T>, maxAttempts: number, delayMs: number): Promise<T> {
@@ -147,22 +147,22 @@ async function withRetry<T>(fn: () => Promise<T>, maxAttempts: number, delayMs: 
   throw lastError;
 }
 
-async function requestAnthropicRecommendation(
+async function requestOpenAIRecommendation(
   input: RecommendationRequest,
   venues: VenueResult[],
   apiKey: string,
   model: string
 ) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
+      "authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model,
       max_tokens: 500,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "user",
@@ -174,22 +174,19 @@ async function requestAnthropicRecommendation(
   });
 
   if (!response.ok) {
-    throw new Error(`Anthropic request failed with status ${response.status}.`);
+    throw new Error(`OpenAI request failed with status ${response.status}.`);
   }
 
   const payload = (await response.json()) as {
-    content?: Array<{ type?: string; text?: string }>;
+    choices?: Array<{ message?: { content?: string } }>;
   };
-  const textBlock = payload.content?.find(
-    (block: { type?: string; text?: string }) =>
-      block.type === "text" && typeof block.text === "string"
-  );
+  const text = payload.choices?.[0]?.message?.content;
 
-  if (!textBlock?.text) {
-    throw new Error("Anthropic response did not include a text content block.");
+  if (!text) {
+    throw new Error("OpenAI response did not include a message content block.");
   }
 
-  return llmRecommendationDraftSchema.parse(JSON.parse(extractJson(textBlock.text)));
+  return llmRecommendationDraftSchema.parse(JSON.parse(extractJson(text)));
 }
 
 function assertGuardrails(input: RecommendationRequest, venue: VenueResult) {
@@ -274,7 +271,7 @@ function buildLlmRecommendation(
       recommendedAction
     ),
     decisionEngine: {
-      source: "anthropic",
+      source: "openai",
       model
     }
   };
@@ -289,10 +286,10 @@ export async function generateRecommendationWithLLM(
 ): Promise<RecommendationResponse> {
   const env = readServerEnv(process.env);
 
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!env.OPENAI_API_KEY) {
     return buildDeterministicRecommendation(
       input,
-      "ANTHROPIC_API_KEY is not configured. Using deterministic fallback."
+      "OPENAI_API_KEY is not configured. Using deterministic fallback."
     );
   }
 
@@ -301,26 +298,26 @@ export async function generateRecommendationWithLLM(
   try {
     const draft = await withRetry(
       () =>
-        requestAnthropicRecommendation(
+        requestOpenAIRecommendation(
           input,
           deterministic.consideredVenues,
-          env.ANTHROPIC_API_KEY!,
-          env.ANTHROPIC_MODEL
+          env.OPENAI_API_KEY!,
+          env.OPENAI_MODEL
         ),
       2,
       600
     );
 
-    return buildLlmRecommendation(input, deterministic, draft, env.ANTHROPIC_MODEL);
+    return buildLlmRecommendation(input, deterministic, draft, env.OPENAI_MODEL);
   } catch (error) {
     console.error(
-      `[recommendation-engine] Anthropic request failed: ${error instanceof Error ? error.message : String(error)}`
+      `[recommendation-engine] OpenAI request failed: ${error instanceof Error ? error.message : String(error)}`
     );
     return buildDeterministicRecommendation(
       input,
       error instanceof Error
         ? `${error.message} Using deterministic fallback.`
-        : "Anthropic request failed. Using deterministic fallback."
+        : "OpenAI request failed. Using deterministic fallback."
     );
   }
 }
