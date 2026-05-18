@@ -1,11 +1,11 @@
-import { generateRecommendation } from "@yield-copilot/agents";
+import { generateRecommendationWithLLM } from "@yield-copilot/agents";
 import type {
   RecommendationRequest,
   RecommendationResponse
 } from "@yield-copilot/shared";
 
 export type CopilotNarrative = {
-  source: "anthropic" | "deterministic";
+  source: "openai" | "deterministic";
   summary: string;
   whyNow: string[];
   watchFor: string[];
@@ -16,38 +16,12 @@ export type RecommendationView = {
   copilot: CopilotNarrative;
 };
 
-type AnthropicTextBlock = {
-  type: string;
-  text?: string;
-};
-
-type AnthropicResponse = {
-  content?: AnthropicTextBlock[];
-};
-
-function parseJsonBlock(value: string) {
-  const trimmed = value.trim();
-
-  if (trimmed.startsWith("```")) {
-    const cleaned = trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    return JSON.parse(cleaned);
-  }
-
-  return JSON.parse(trimmed);
-}
-
 function humanizeLiquidity(
   liquidityProfile: RecommendationResponse["recommended"]["liquidityProfile"],
   lockupDays: number
 ) {
-  if (liquidityProfile === "instant") {
-    return "instant access";
-  }
-
-  if (liquidityProfile === "same-day") {
-    return "same-day exit";
-  }
-
+  if (liquidityProfile === "instant") return "instant access";
+  if (liquidityProfile === "same-day") return "same-day exit";
   return lockupDays > 0 ? `${lockupDays}-day lockup` : "locked liquidity";
 }
 
@@ -68,69 +42,93 @@ function buildDeterministicNarrative(
     source: "deterministic",
     summary: `${recommended.label} leads for ${input.amount} ${input.token} because it balances ${input.goal.replace("-", " ")}, ${input.riskComfort} risk comfort, and ${humanizeLiquidity(recommended.liquidityProfile, recommended.lockupDays)} better than the other routes.`,
     whyNow,
-    watchFor: Array.from(new Set([...recommended.warnings, ...recommendation.warnings])).slice(
-      0,
-      3
-    )
+    watchFor: Array.from(new Set([...recommended.warnings, ...recommendation.warnings])).slice(0, 3)
   };
 }
 
-async function generateAnthropicNarrative(
+async function generateOpenAINarrative(
   input: RecommendationRequest,
   recommendation: RecommendationResponse
 ): Promise<CopilotNarrative | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514";
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
-  if (!apiKey) {
-    return null;
-  }
+  if (!apiKey) return null;
 
-  const prompt = {
-    userInput: input,
+  const context = {
+    userBrief: {
+      goal: input.goal,
+      token: input.token,
+      amount: input.amount,
+      timeHorizonDays: input.timeHorizonDays,
+      riskComfort: input.riskComfort
+    },
     recommendation: {
-      topPick: recommendation.recommended,
-      backup: recommendation.backup,
-      rationale: recommendation.rationale,
+      topPick: {
+        id: recommendation.recommended.id,
+        label: recommendation.recommended.label,
+        apy: recommendation.recommended.apy,
+        riskLabel: recommendation.recommended.riskLabel,
+        liquidityProfile: recommendation.recommended.liquidityProfile,
+        lockupDays: recommendation.recommended.lockupDays,
+        estimatedNetReturn: recommendation.recommended.estimatedNetReturn,
+        tradeoffSummary: recommendation.recommended.tradeoffSummary
+      },
+      backup: recommendation.backup
+        ? {
+            label: recommendation.backup.label,
+            apy: recommendation.backup.apy,
+            liquidityProfile: recommendation.backup.liquidityProfile
+          }
+        : null,
+      confidence: recommendation.confidence,
+      decisionSummary: recommendation.decisionSummary,
       warnings: recommendation.warnings,
-      executionPlan: recommendation.executionPlan
+      decisionEngine: recommendation.decisionEngine.source
     }
   };
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
+      "authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
       model,
-      max_tokens: 320,
-      system:
-        "You explain a deterministic stablecoin yield recommendation. Return strict JSON only with keys summary, whyNow, watchFor. summary must be one short paragraph. whyNow and watchFor must each be arrays of 2 to 3 short strings. Do not invent venues, rates, or risks. Stay faithful to the provided recommendation data.",
+      max_tokens: 400,
+      response_format: { type: "json_object" },
       messages: [
         {
+          role: "system",
+          content: [
+            "You are an autonomous AI yield agent for MiniPay users on Celo.",
+            "Your job: explain a yield recommendation in plain language so the user can act with confidence.",
+            "Return strict JSON with exactly these keys: summary, whyNow, watchFor.",
+            "summary: 2–3 sentences. Open with a clear verdict. Explain why the top pick wins for this user's specific goal, amount, and risk comfort. Sound like a trusted advisor.",
+            "whyNow: array of exactly 2–3 short strings. Each is a concrete, specific reason to act now. Use real numbers from the data.",
+            "watchFor: array of exactly 2–3 short strings. Each is a real risk or condition that could invalidate this recommendation. Be honest, not reassuring.",
+            "Rules: never invent rates or venues not in the data. Write for a mobile screen — short sentences, no jargon. Be decisive."
+          ].join("\n")
+        },
+        {
           role: "user",
-          content: `Explain this recommendation for a mobile MiniPay app user.\n${JSON.stringify(prompt)}`
+          content: JSON.stringify(context)
         }
       ]
     }),
     cache: "no-store"
   });
 
-  if (!response.ok) {
-    return null;
-  }
+  if (!response.ok) return null;
 
-  const payload = (await response.json()) as AnthropicResponse;
-  const text = payload.content?.find((entry) => entry.type === "text")?.text;
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = payload.choices?.[0]?.message?.content;
+  if (!text) return null;
 
-  if (!text) {
-    return null;
-  }
-
-  const parsed = parseJsonBlock(text) as {
+  const parsed = JSON.parse(text) as {
     summary?: unknown;
     whyNow?: unknown;
     watchFor?: unknown;
@@ -145,16 +143,12 @@ async function generateAnthropicNarrative(
   }
 
   const whyNow = parsed.whyNow.filter((item): item is string => typeof item === "string").slice(0, 3);
-  const watchFor = parsed.watchFor
-    .filter((item): item is string => typeof item === "string")
-    .slice(0, 3);
+  const watchFor = parsed.watchFor.filter((item): item is string => typeof item === "string").slice(0, 3);
 
-  if (whyNow.length === 0 || watchFor.length === 0) {
-    return null;
-  }
+  if (whyNow.length === 0 || watchFor.length === 0) return null;
 
   return {
-    source: "anthropic",
+    source: "openai",
     summary: parsed.summary,
     whyNow,
     watchFor
@@ -164,20 +158,13 @@ async function generateAnthropicNarrative(
 export async function getRecommendationView(
   input: RecommendationRequest
 ): Promise<RecommendationView> {
-  const recommendation = generateRecommendation(input);
+  const recommendation = await generateRecommendationWithLLM(input);
   const fallback = buildDeterministicNarrative(input, recommendation);
 
   try {
-    const aiNarrative = await generateAnthropicNarrative(input, recommendation);
-
-    return {
-      recommendation,
-      copilot: aiNarrative ?? fallback
-    };
+    const aiNarrative = await generateOpenAINarrative(input, recommendation);
+    return { recommendation, copilot: aiNarrative ?? fallback };
   } catch {
-    return {
-      recommendation,
-      copilot: fallback
-    };
+    return { recommendation, copilot: fallback };
   }
 }

@@ -132,7 +132,7 @@ export default async function RecommendationPage({
       <section className="screen-section">
         <div className="screen-section__head screen-section__head--split">
           <span>Copilot read</span>
-          <span>{copilot.source === "anthropic" ? "AI" : "Rules"}</span>
+          <span>{copilot.source === "openai" ? "AI" : "Rules"}</span>
         </div>
         <div className="notice-card compact recommendation-copilot-card">
           <p>{copilot.summary}</p>
