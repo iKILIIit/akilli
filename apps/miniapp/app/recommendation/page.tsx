@@ -1,191 +1,208 @@
 import Link from "next/link";
-import { generateRecommendationWithLLM } from "@yield-copilot/agents";
-import { cx } from "@yield-copilot/ui";
-import { AppShell } from "../../components/app-shell";
-import { VenueCard } from "../../components/venue-card";
+import { formatGoalLabel, formatRiskLabel } from "../../lib/format";
+import { getRecommendationView } from "../../lib/recommendation";
+import { BackButton, HeaderBar, ScreenFrame, StepDots } from "../../components/screen-frame";
 import { parseRecommendationInput } from "../../lib/request";
 
 type RecommendationPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const confidenceToneClassNames = {
-  "Strong fit": "decision-pill-strong",
-  "Good fit": "decision-pill-good",
-  "Hold for now": "decision-pill-hold"
-} as const;
-
-function formatUnits(amount: number) {
-  return amount.toFixed(2);
+function Chip({
+  children,
+  tone = "default",
+}: {
+  children: React.ReactNode;
+  tone?: "default" | "green" | "slab";
+}) {
+  return <span className={`inline-chip inline-chip--${tone}`}>{children}</span>;
 }
 
-function formatTimestamp(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(value));
+function formatLiquidity(liquidityProfile: "instant" | "same-day" | "locked", lockupDays: number) {
+  if (liquidityProfile === "instant") {
+    return { label: "Instant", detail: "Exit anytime" };
+  }
+
+  if (liquidityProfile === "same-day") {
+    return { label: "Same day", detail: "Fast exit" };
+  }
+
+  return {
+    label: `${lockupDays}d`,
+    detail: lockupDays > 0 ? "Lockup" : "Locked"
+  };
+}
+
+function venueMark(label: string) {
+  return label.trim().charAt(0).toUpperCase();
 }
 
 export default async function RecommendationPage({
-  searchParams
+  searchParams,
 }: RecommendationPageProps) {
   const parsed = parseRecommendationInput(await searchParams);
-  const recommendation = await generateRecommendationWithLLM(parsed);
   const nextParams = new URLSearchParams({
     token: parsed.token,
     amount: parsed.amount,
     goal: parsed.goal,
     timeHorizonDays: String(parsed.timeHorizonDays),
-    riskComfort: parsed.riskComfort
+    riskComfort: parsed.riskComfort,
   });
-  const alternatives = recommendation.consideredVenues.slice(1);
+
+  if (parsed.walletAddress) {
+    nextParams.set("walletAddress", parsed.walletAddress);
+  }
+
+  const { recommendation, copilot } = await getRecommendationView(parsed);
+  const topPick = recommendation.recommended;
+  const backup = recommendation.backup;
+  const liquidity = formatLiquidity(topPick.liquidityProfile, topPick.lockupDays);
 
   return (
-    <AppShell
-      eyebrow="Recommendation"
-      title={
-        recommendation.recommendedAction === "stay-liquid"
-          ? "Stay liquid for now"
-          : "Your best fit right now"
-      }
-      intro="This result weighs expected net gain, exit friction, risk comfort, and whether the path stays close to MiniPay before it recommends any move."
-      step={{ current: 2, total: 3, label: "Decision" }}
-    >
-      <section className="panel decision-summary-card stack-md">
-        <div className="row-between">
-          <div className="stack-sm">
-            <p className="section-label">Decision stance</p>
-            <h2>{recommendation.decisionSummary}</h2>
-          </div>
-          <span
-            className={cx(
-              "decision-pill",
-              confidenceToneClassNames[recommendation.confidence]
-            )}
-          >
-            {recommendation.confidence}
-          </span>
-        </div>
-
-        <div className="metric-row metric-row-wide">
-          <div>
-            <span>Recommended action</span>
-            <strong>
-              {recommendation.recommendedAction === "stay-liquid"
-                ? "Stay in MiniPay"
-                : recommendation.recommended.label}
-            </strong>
-          </div>
-          <div>
-            <span>{parsed.timeHorizonDays}d net</span>
-            <strong>{formatUnits(recommendation.recommended.estimatedNetReturn)} {parsed.token}</strong>
-          </div>
-          <div>
-            <span>Updated</span>
-            <strong>{formatTimestamp(recommendation.generatedAt)}</strong>
-          </div>
-          <div>
-            <span>Decision engine</span>
-            <strong>
-              {recommendation.decisionEngine.source === "openai"
-                ? "OpenAI"
-                : "Deterministic fallback"}
-            </strong>
-          </div>
-        </div>
-        {recommendation.decisionEngine.fallbackReason ? (
-          <p className="section-label">{recommendation.decisionEngine.fallbackReason}</p>
-        ) : null}
-      </section>
-
-      <section className="panel brief-card">
-        <p className="section-label">Your brief</p>
-        <div className="brief-chip-row">
-          <span className="brief-chip">{parsed.goal}</span>
-          <span className="brief-chip">
-            {parsed.amount} {parsed.token}
-          </span>
-          <span className="brief-chip">{parsed.timeHorizonDays} days</span>
-          <span className="brief-chip">{parsed.riskComfort} risk comfort</span>
-        </div>
-      </section>
-
-      <VenueCard
-        heading="Top pick"
-        venue={recommendation.recommended}
-        timeHorizonDays={parsed.timeHorizonDays}
-        featured
-      />
-      <VenueCard
-        heading="Backup option"
-        venue={recommendation.backup}
-        timeHorizonDays={parsed.timeHorizonDays}
+    <ScreenFrame>
+      <HeaderBar
+        left={<BackButton href={`/check?${nextParams.toString()}`} />}
+        title="Recommendation"
+        right={<div style={{ width: 36 }} />}
       />
 
-      <section className="panel stack-md">
-        <p className="section-label">Why this wins</p>
-        <ul className="bullet-list">
-          {recommendation.rationale.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+      <section className="screen-copy-block">
+        <StepDots current={2} total={3} />
+        <h1 className="screen-copy-block__title">
+          Your best fit
+          <br />
+          right now.
+        </h1>
       </section>
 
-      {alternatives.length > 0 ? (
-        <section className="panel stack-md">
-          <p className="section-label">Why not the others</p>
-          <div className="comparison-list">
-            {alternatives.map((venue) => (
-              <article key={venue.id} className="comparison-card">
-                <div className="row-between">
-                  <div>
-                    <strong>{venue.label}</strong>
-                    <p>{venue.tradeoffSummary}</p>
-                  </div>
-                  <span className="comparison-score">{venue.score.toFixed(2)}</span>
-                </div>
-                <div className="comparison-metrics">
-                  <span>{venue.apy.toFixed(2)}% APY</span>
-                  <span>{formatUnits(venue.estimatedNetReturn)} {venue.token} net</span>
-                  <span>{venue.exitWindowLabel}</span>
-                </div>
-              </article>
-            ))}
+      <section className="brief-chip-row brief-chip-row--spacious">
+        <Chip>{formatGoalLabel(parsed.goal)}</Chip>
+        <Chip>{parsed.amount} {parsed.token}</Chip>
+        <Chip>{parsed.timeHorizonDays} days</Chip>
+        <Chip>{formatRiskLabel(parsed.riskComfort)}</Chip>
+      </section>
+
+      <section className="featured-route-card">
+        <div className="featured-route-card__glow" aria-hidden="true" />
+        <div className="featured-route-card__head">
+          <span className="featured-route-card__logo">{venueMark(topPick.label)}</span>
+          <div className="featured-route-card__title-wrap">
+            <span className="featured-route-card__label">Top pick</span>
+            <strong>{topPick.label}</strong>
+          </div>
+          <Chip tone="slab">{topPick.actionLabel}</Chip>
+        </div>
+
+        <div className="featured-route-card__stats">
+          <div>
+            <span>APY</span>
+            <strong>{topPick.apy.toFixed(2)}%</strong>
+            <small>{parsed.token}</small>
+          </div>
+          <div>
+            <span>Risk</span>
+            <strong>{topPick.riskLabel.replace(" complexity", "")}</strong>
+            <small>{topPick.score.toFixed(0)} fit</small>
+          </div>
+          <div>
+            <span>Liquidity</span>
+            <strong>{liquidity.label}</strong>
+            <small>{liquidity.detail}</small>
+          </div>
+        </div>
+      </section>
+
+      {backup ? (
+        <section className="supporting-route-card">
+          <span className="supporting-route-card__logo supporting-route-card__logo--amber">
+            {venueMark(backup.label)}
+          </span>
+          <div className="supporting-route-card__body">
+            <span className="supporting-route-card__label">Backup</span>
+            <strong>{backup.label}</strong>
+            <small>{backup.riskLabel} · {formatLiquidity(backup.liquidityProfile, backup.lockupDays).detail}</small>
+          </div>
+          <div className="supporting-route-card__metric">
+            <strong>{backup.apy.toFixed(2)}%</strong>
+            <small>APY · {parsed.token}</small>
           </div>
         </section>
       ) : null}
 
-      <section className="panel stack-md">
-        <p className="section-label">Watchouts</p>
-        <ul className="bullet-list">
-          {recommendation.warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="panel stack-md">
-        <p className="section-label">Execution plan</p>
-        <h2>{recommendation.executionPlan.cta}</h2>
-        <ul className="timeline-list">
-          {recommendation.executionPlan.steps.map((step) => (
-            <li key={step.title}>
-              <strong>{step.title}</strong>
-              <p>{step.detail}</p>
-            </li>
-          ))}
-        </ul>
-        <div className="action-row">
-          <Link href={`/position?${nextParams.toString()}`} className="primary-action">
-            Continue
-          </Link>
-          <Link href="/" className="secondary-action">
-            Change inputs
-          </Link>
+      <section className="screen-section">
+        <div className="screen-section__head screen-section__head--split">
+          <span>Copilot read</span>
+          <span>{copilot.source === "anthropic" ? "AI" : "Rules"}</span>
+        </div>
+        <div className="notice-card compact recommendation-copilot-card">
+          <p>{copilot.summary}</p>
         </div>
       </section>
-    </AppShell>
+
+      <section className="screen-section">
+        <div className="screen-section__head">Why this wins</div>
+        <div className="list-card">
+          {copilot.whyNow.map((item, index, arr) => (
+            <div
+              key={item}
+              className={
+                index < arr.length - 1
+                  ? "list-card__row"
+                  : "list-card__row list-card__row--last"
+              }
+            >
+              <span className="list-card__icon list-card__icon--green" />
+              <div>
+                <strong>{item}</strong>
+                <p>{topPick.rationale[index] ?? topPick.summary}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="screen-section">
+        <div className="screen-section__head">Watch for</div>
+        <div className="list-card">
+          {copilot.watchFor.map((item, index, arr) => (
+            <div
+              key={item}
+              className={
+                index < arr.length - 1
+                  ? "list-card__row"
+                  : "list-card__row list-card__row--last"
+              }
+            >
+              <span className="list-card__icon list-card__icon--amber" />
+              <div>
+                <strong>{item}</strong>
+                <p>{topPick.warnings[index] ?? recommendation.warnings[index] ?? "Revisit the route if conditions drift."}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="screen-section">
+        <div className="screen-section__head">Execution plan</div>
+        <div className="plan-card">
+          {recommendation.executionPlan.steps.map((step, index) => (
+            <div key={step.title} className="plan-card__row">
+              <span className="plan-card__index">{index + 1}</span>
+              <span>{step.title}: {step.detail}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="action-row">
+        <Link href={`/position?${nextParams.toString()}`} className="primary-action">
+          {recommendation.executionPlan.cta}
+        </Link>
+        <Link href={`/check?${nextParams.toString()}`} className="secondary-action">
+          Change inputs
+        </Link>
+      </section>
+    </ScreenFrame>
   );
 }

@@ -7,8 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "tsc --noEmit -p tsconfig.typecheck.json",
-    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.8",

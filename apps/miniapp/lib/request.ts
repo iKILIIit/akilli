@@ -3,7 +3,7 @@ import { recommendationRequestSchema, type RecommendationRequest } from "@yield-
 export const defaultRecommendationInput: RecommendationRequest = {
   walletAddress: "0x0000000000000000000000000000000000000000",
   token: "USDC",
-  amount: "150",
+  amount: "2400",
   goal: "save-safely",
   timeHorizonDays: 30,
   riskComfort: "low"
