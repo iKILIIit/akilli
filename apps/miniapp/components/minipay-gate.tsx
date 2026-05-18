@@ -14,6 +14,7 @@ declare global {
     ethereum?: {
       isMiniPay?: boolean;
       selectedAddress?: string | null;
+      request?: (args: { method: string }) => Promise<string[]>;
     };
   }
 }
@@ -23,6 +24,8 @@ export function MiniPayGate() {
     isAvailable: false,
     isMiniPayProvider: false
   });
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
     setRuntime(
@@ -32,6 +35,33 @@ export function MiniPayGate() {
       )
     );
   }, []);
+
+  useEffect(() => {
+    if (runtime.isMiniPayProvider && !runtime.walletAddress) {
+      handleConnect();
+    }
+  }, [runtime.isMiniPayProvider]);
+
+  async function handleConnect() {
+    if (!window.ethereum?.request) return;
+    setConnecting(true);
+    setConnectError(null);
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const address = accounts[0];
+      if (address) {
+        setRuntime((prev) => ({ ...prev, walletAddress: address }));
+      }
+    } catch {
+      setConnectError("Could not connect to wallet.");
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  function truncateAddress(address: string) {
+    return `${address.slice(0, 6)}…${address.slice(-4)}`;
+  }
 
   const minipayOnly = process.env.NEXT_PUBLIC_MINIPAY_ONLY === "true";
 
@@ -62,9 +92,31 @@ export function MiniPayGate() {
         </div>
         <div>
           <dt>Wallet</dt>
-          <dd>{runtime.walletAddress ?? "Waiting for MiniPay"}</dd>
+          <dd>
+            {runtime.walletAddress
+              ? truncateAddress(runtime.walletAddress)
+              : connecting
+                ? "Connecting…"
+                : "Not connected"}
+          </dd>
         </div>
       </dl>
+      {runtime.isMiniPayProvider && !runtime.walletAddress && !connecting && (
+        <div className="action-row">
+          {connectError ? (
+            <>
+              <p className="section-label">{connectError}</p>
+              <button className="secondary-action" onClick={handleConnect}>
+                Retry
+              </button>
+            </>
+          ) : (
+            <button className="primary-action" onClick={handleConnect}>
+              Connect wallet
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

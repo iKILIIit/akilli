@@ -1,0 +1,17 @@
+{
+  "name": "@yield-copilot/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.ts --network celo",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network celo-alfajores"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "chai": "^4.4.1",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.8.3"
+  }
+}

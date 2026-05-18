@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { generatePositionView, generateRecommendation } from "@yield-copilot/agents";
 import { AppShell } from "../../components/app-shell";
+import { PositionTracker } from "../../components/position-tracker";
 import { parseRecommendationInput } from "../../lib/request";
 
 type PositionPageProps = {
@@ -58,6 +59,8 @@ export default async function PositionPage({ searchParams }: PositionPageProps) 
           <span className="brief-chip">{parsed.timeHorizonDays} day horizon</span>
         </div>
       </section>
+
+      <PositionTracker serverPosition={position} />
 
       <section className="panel stack-md">
         <p className="section-label">Monitoring rules</p>

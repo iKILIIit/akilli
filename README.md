@@ -149,12 +149,31 @@ NEXT_PUBLIC_APP_ENV=production
 NEXT_PUBLIC_DEFAULT_CHAIN=celo
 NEXT_PUBLIC_MINIPAY_ONLY=false
 NEXT_PUBLIC_SUPPORT_EMAIL=support@yieldcopilot.app
+ANTHROPIC_API_KEY=your_server_side_key
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
 
 Notes:
 
 - The current recommendation flow is generated inside the Next app, so the frontend does not require the separate API to be deployed
 - The Node server in `apps/api` is not deployable to Vercel as a long-running process in its current form
+- `ANTHROPIC_API_KEY` must stay server-side and must not use a `NEXT_PUBLIC_` prefix
+
+## Onchain guardrails
+
+The repository now includes a scaffolded onchain policy layer for execution
+guardrails:
+
+- shared action and execution request types in `packages/shared`
+- Celo-side router ABI and request builders in `packages/celo/src/policy-router.ts`
+- Solidity policy router scaffold in `packages/contracts/src/PolicyRouter.sol`
+
+The intended split is:
+
+- Anthropic proposes a structured recommendation
+- shared schemas validate the model output
+- the app maps the selected venue into a narrow policy action
+- the onchain router enforces whether that action is allowed
 
 ## Environment variables
 

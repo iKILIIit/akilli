@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { generateRecommendation } from "@yield-copilot/agents";
+import { generateRecommendationWithLLM } from "@yield-copilot/agents";
 import { cx } from "@yield-copilot/ui";
 import { AppShell } from "../../components/app-shell";
 import { VenueCard } from "../../components/venue-card";
@@ -32,7 +32,7 @@ export default async function RecommendationPage({
   searchParams
 }: RecommendationPageProps) {
   const parsed = parseRecommendationInput(await searchParams);
-  const recommendation = generateRecommendation(parsed);
+  const recommendation = await generateRecommendationWithLLM(parsed);
   const nextParams = new URLSearchParams({
     token: parsed.token,
     amount: parsed.amount,
@@ -86,7 +86,18 @@ export default async function RecommendationPage({
             <span>Updated</span>
             <strong>{formatTimestamp(recommendation.generatedAt)}</strong>
           </div>
+          <div>
+            <span>Decision engine</span>
+            <strong>
+              {recommendation.decisionEngine.source === "anthropic"
+                ? "Anthropic"
+                : "Deterministic fallback"}
+            </strong>
+          </div>
         </div>
+        {recommendation.decisionEngine.fallbackReason ? (
+          <p className="section-label">{recommendation.decisionEngine.fallbackReason}</p>
+        ) : null}
       </section>
 
       <section className="panel brief-card">
