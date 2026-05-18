@@ -14,7 +14,7 @@ export const recommendationConfidenceSchema = z.enum([
   "Hold for now"
 ]);
 export const recommendationActionSchema = z.enum(["move-funds", "stay-liquid"]);
-export const recommendationEngineSourceSchema = z.enum(["deterministic", "anthropic"]);
+export const recommendationEngineSourceSchema = z.enum(["deterministic", "openai"]);
 export const policyActionSchema = z.enum([
   "stay-liquid",
   "deposit-minipay-boost",

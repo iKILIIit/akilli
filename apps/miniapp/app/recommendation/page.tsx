@@ -89,8 +89,8 @@ export default async function RecommendationPage({
           <div>
             <span>Decision engine</span>
             <strong>
-              {recommendation.decisionEngine.source === "anthropic"
-                ? "Anthropic"
+              {recommendation.decisionEngine.source === "openai"
+                ? "OpenAI"
                 : "Deterministic fallback"}
             </strong>
           </div>
