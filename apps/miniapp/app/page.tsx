@@ -95,6 +95,15 @@ export default function HomePage() {
   const { balances, isLoading: balancesLoading } = useStableTokenBalances(miniPay.walletAddress);
   const [selectedToken, setSelectedToken] = useState<Token>("USDC");
   const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
+
+  function copyAddress() {
+    if (!miniPay.walletAddress) return;
+    void navigator.clipboard.writeText(miniPay.walletAddress).then(() => {
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 2000);
+    });
+  }
 
   const positiveBalances = useMemo(
     () => balances.filter((balance) => balance.hasBalance),
@@ -174,9 +183,9 @@ export default function HomePage() {
               <p className="section-label section-label--on-dark">
                 AI Financial Copilot
               </p>
-              <div className="dashboard-hero-home__status">
+              <div className="dashboard-hero-home__status" onClick={miniPay.walletAddress ? copyAddress : undefined} style={{ cursor: miniPay.walletAddress ? "pointer" : "default" }}>
                 <span className="dashboard-hero-home__dot" />
-                <span>{walletSummary}</span>
+                <span>{addressCopied ? "Copied!" : walletSummary}</span>
               </div>
             </div>
 
