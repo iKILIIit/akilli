@@ -400,7 +400,7 @@ function CopilotInner() {
 
           <div style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "160px", display: "flex", flexDirection: "column", gap: "12px" }}>
             {messages.map(msg => (
-              <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+              <div key={msg.id} className="message-enter" style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
                 <div style={{
                   maxWidth: "85%",
                   padding: "10px 14px",
