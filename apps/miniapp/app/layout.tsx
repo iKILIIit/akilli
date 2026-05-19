@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "Akili — AI Financial Copilot",
   description:
     "AI-powered financial intelligence for MiniPay users. Analyze spending, audit your wallet, and get a personalized financial health score.",
+  other: {
+    "talentapp:project_verification":
+      "498ae78c26111ee7ebbbfd03df60200926d9e23df2de6d1d70f3e72ced631dfeee6f9926665d80e9ac4ba0d1674139043d4f8eac967234569d2fc4955269b717",
+  },
 };
 
 export const viewport: Viewport = {
