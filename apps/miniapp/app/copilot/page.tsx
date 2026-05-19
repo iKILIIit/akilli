@@ -556,7 +556,21 @@ function CopilotInner() {
             </div>
           )}
 
-          {insights && !insightsLoading && (
+          {insights && !insightsLoading && insights.transactionCount === 0 && (
+            <div style={{
+              textAlign: "center", padding: "40px 24px",
+              background: "var(--surface)", borderRadius: "22px",
+              border: "1px solid var(--line)"
+            }}>
+              <div style={{ fontSize: "36px", marginBottom: "12px" }}>📭</div>
+              <strong style={{ fontSize: "1rem", color: "var(--ink)" }}>No transactions yet</strong>
+              <p style={{ color: "var(--ink-55)", fontSize: "0.88rem", marginTop: "6px", maxWidth: "26ch", margin: "6px auto 0" }}>
+                Once you start sending and receiving stablecoins, Akili will analyze your activity here.
+              </p>
+            </div>
+          )}
+
+          {insights && !insightsLoading && insights.transactionCount > 0 && (
             <div className="stack-lg">
               {/* Financial Health */}
               <div>
