@@ -9,6 +9,9 @@
     "deploy:testnet": "hardhat run scripts/deploy.ts --network celo-alfajores",
     "register:agent": "npx tsx scripts/register-erc8004.ts"
   },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "chai": "^4.4.1",
