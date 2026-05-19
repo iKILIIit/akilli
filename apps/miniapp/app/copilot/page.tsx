@@ -288,8 +288,20 @@ function CopilotInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
       });
-      const data = await res.json();
-      const reply = data.narrative ?? data.reply ?? data.error ?? "Could not get a response.";
+      const data = await res.json() as Record<string, unknown>;
+      if (!res.ok) {
+        const errMsg =
+          res.status === 429
+            ? "You're sending messages too quickly. Please wait a moment and try again."
+            : res.status === 402
+            ? "A small payment is required to run this analysis."
+            : typeof data.error === "string"
+            ? data.error
+            : "Something went wrong. Please try again.";
+        setMessages(prev => [...prev, { id: `${Date.now()}-e`, role: "assistant", content: errMsg, timestamp: new Date() }]);
+        return;
+      }
+      const reply = (data.narrative ?? data.reply ?? "Could not get a response.") as string;
       setMessages(prev => [...prev, {
         id: `${Date.now()}-r`,
         role: "assistant",
@@ -301,7 +313,7 @@ function CopilotInner() {
       setMessages(prev => [...prev, {
         id: `${Date.now()}-e`,
         role: "assistant",
-        content: "Something went wrong. Please try again.",
+        content: "Network error — check your connection and try again.",
         timestamp: new Date()
       }]);
     } finally {
