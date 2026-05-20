@@ -382,11 +382,13 @@ function CopilotInner() {
           </div>
         </div>
 
-        <div className="segmented-row" style={{ margin: "0 0 12px" }}>
+        <div className="segmented-row" role="tablist" aria-label="Akili sections" style={{ margin: "0 0 12px" }}>
           {(["chat", "insights"] as const).map(t => (
             <button
               key={t}
               type="button"
+              role="tab"
+              aria-selected={tab === t}
               onClick={() => setTab(t)}
               className={`segmented-row__item${tab === t ? " is-active" : ""}`}
             >
