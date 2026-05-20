@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMiniPay } from "../../hooks/use-minipay";
 import { BottomNav } from "../../components/bottom-nav";
+import { toast } from "../../components/toast";
 import Link from "next/link";
 
 type Message = {
@@ -443,7 +444,9 @@ function CopilotInner() {
                       if (navigator.share) {
                         void navigator.share({ title: "Akili Financial Report", text: msg.content });
                       } else {
-                        void navigator.clipboard.writeText(msg.content);
+                        void navigator.clipboard.writeText(msg.content).then(() => {
+                          toast.success("Copied to clipboard");
+                        });
                       }
                     }}
                     style={{
@@ -461,7 +464,7 @@ function CopilotInner() {
                 {msg.role === "assistant" && msg.reportType === "wallet-statement" && (
                   <button
                     type="button"
-                    onClick={() => downloadStatement(msg.content, address)}
+                    onClick={() => { downloadStatement(msg.content, address); toast.success("Statement downloaded"); }}
                     style={{
                       marginTop: "6px",
                       display: "inline-flex",
