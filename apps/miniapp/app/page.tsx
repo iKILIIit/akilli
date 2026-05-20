@@ -251,6 +251,8 @@ export default function HomePage() {
                 }
                 onClick={() => setSelectedToken(balance.symbol)}
                 disabled={!miniPay.walletAddress}
+                aria-pressed={selectedToken === balance.symbol}
+                aria-label={`${balance.symbol} balance: ${balance.displayAmount}`}
               >
                 <span className={`token-card__dot token-card__dot--${balance.symbol.toLowerCase()}`} aria-hidden="true" />
                 <strong>{balance.symbol}</strong>
