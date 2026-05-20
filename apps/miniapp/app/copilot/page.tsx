@@ -106,8 +106,11 @@ function DonutChart({ categories }: { categories: SpendingCategory[] }) {
         {visible.map(cat => (
           <div key={cat.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: "8px", height: "8px", borderRadius: "2px", background: cat.color, flexShrink: 0 }} />
-            <span style={{ fontSize: "12px", color: "var(--ink-70)", flex: 1 }}>{cat.label}</span>
-            <span style={{ fontSize: "11px", color: "var(--ink-55)", fontFamily: "var(--font-mono)" }}>{cat.percentage}%</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: "12px", color: "var(--ink-70)" }}>{cat.label}</span>
+              <span style={{ fontSize: "10px", color: "var(--ink-40)", marginLeft: "4px" }}>${cat.amount.toFixed(2)}</span>
+            </div>
+            <span style={{ fontSize: "11px", color: "var(--ink-55)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>{cat.percentage}%</span>
           </div>
         ))}
       </div>
