@@ -226,6 +226,7 @@ function CopilotInner() {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState("");
+  const [insightsDays, setInsightsDays] = useState(90);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -247,7 +248,7 @@ function CopilotInner() {
     }
   }, [address, actionParam]);
 
-  async function loadInsights() {
+  async function loadInsights(days = insightsDays) {
     if (!address) return;
     setInsightsLoading(true);
     setInsightsError("");
@@ -255,7 +256,7 @@ function CopilotInner() {
       const res = await fetch("/api/insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ walletAddress: address, days: 90 })
+        body: JSON.stringify({ walletAddress: address, days })
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -567,6 +568,25 @@ function CopilotInner() {
       {/* ── Insights tab ── */}
       {tab === "insights" && (
         <div className="tab-panel-enter" style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "100px" }}>
+          {/* Date range selector */}
+          <div style={{ display: "flex", gap: "6px", marginBottom: "16px" }}>
+            {[7, 30, 90].map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => { setInsightsDays(d); setInsights(null); void loadInsights(d); }}
+                style={{
+                  padding: "4px 12px", borderRadius: "999px", fontSize: "12px", fontWeight: 500, cursor: "pointer",
+                  background: insightsDays === d ? "var(--ink)" : "var(--surface)",
+                  color: insightsDays === d ? "#fffdf7" : "var(--ink-55)",
+                  border: `1px solid ${insightsDays === d ? "var(--ink)" : "var(--line)"}`
+                }}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+
           {insightsLoading && (
             <div className="stack-lg">
               {[120, 80, 100].map((w, i) => (
@@ -584,7 +604,7 @@ function CopilotInner() {
             <div className="notice-card danger">
               <strong style={{ fontSize: "0.88rem" }}>Analysis failed</strong>
               <p style={{ fontSize: "0.82rem" }}>{insightsError}</p>
-              <button type="button" onClick={loadInsights} className="secondary-action" style={{ width: "auto", padding: "0 16px", minHeight: "36px", fontSize: "0.82rem" }}>
+              <button type="button" onClick={() => void loadInsights()} className="secondary-action" style={{ width: "auto", padding: "0 16px", minHeight: "36px", fontSize: "0.82rem" }}>
                 Retry
               </button>
             </div>
@@ -697,7 +717,7 @@ function CopilotInner() {
                 </div>
               </div>
 
-              <button type="button" onClick={loadInsights} className="secondary-action">
+              <button type="button" onClick={() => void loadInsights()} className="secondary-action">
                 Refresh analysis
               </button>
             </div>
@@ -706,7 +726,7 @@ function CopilotInner() {
           {!insights && !insightsLoading && !insightsError && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 0", gap: "12px" }}>
               <p style={{ color: "var(--ink-55)", fontSize: "14px" }}>No insights loaded yet.</p>
-              <button type="button" onClick={loadInsights} className="primary-action" style={{ width: "auto", padding: "0 24px" }}>
+              <button type="button" onClick={() => void loadInsights()} className="primary-action" style={{ width: "auto", padding: "0 24px" }}>
                 Load insights
               </button>
             </div>
