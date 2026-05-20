@@ -528,26 +528,38 @@ function CopilotInner() {
             alignItems: "flex-end",
             zIndex: 15
           }}>
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-              placeholder="Ask about your wallet…"
-              rows={1}
-              style={{
-                flex: 1,
-                background: "var(--surface-warm)",
-                border: "1px solid var(--line)",
-                borderRadius: "16px",
-                padding: "10px 14px",
-                color: "var(--ink)",
-                fontSize: "14px",
-                outline: "none",
-                resize: "none",
-                fontFamily: "var(--font-sans)",
-                lineHeight: "1.4"
-              }}
-            />
+            <div style={{ flex: 1, position: "relative" }}>
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value.slice(0, 500))}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+                placeholder="Ask about your wallet…"
+                rows={1}
+                maxLength={500}
+                style={{
+                  width: "100%",
+                  background: "var(--surface-warm)",
+                  border: "1px solid var(--line)",
+                  borderRadius: "16px",
+                  padding: "10px 14px",
+                  color: "var(--ink)",
+                  fontSize: "14px",
+                  outline: "none",
+                  resize: "none",
+                  fontFamily: "var(--font-sans)",
+                  lineHeight: "1.4",
+                  boxSizing: "border-box"
+                }}
+              />
+              {input.length > 400 && (
+                <span style={{
+                  position: "absolute", bottom: "6px", right: "10px",
+                  fontSize: "10px", color: input.length >= 490 ? "var(--coral)" : "var(--ink-40)"
+                }}>
+                  {500 - input.length}
+                </span>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => sendMessage(input)}
