@@ -264,6 +264,27 @@ describe("PolicyRouter", () => {
     });
   });
 
+  describe("executePolicyAction — amount exceeds max", () => {
+    it("reverts with AmountExceedsMax when amount > policy maxAmount", async () => {
+      const { router, tokenAddress, owner, user } = await loadFixture(deployFixture);
+      await router.connect(owner).setAllowedToken(tokenAddress, true);
+      await router.connect(owner).setUserRiskScore(user.address, 100);
+
+      const venueIdHash = ethers.keccak256(ethers.toUtf8Bytes("wallet-liquid"));
+      const policy = makeVenuePolicy({ maxAmount: ethers.parseUnits("50", 6) });
+      await router.connect(owner).setVenuePolicy(venueIdHash, policy);
+
+      const request = await makeRequest(router, user.address, tokenAddress, {
+        venueIdHash,
+        amount: ethers.parseUnits("100", 6)
+      });
+      await expect(router.connect(user).executePolicyAction(request)).to.be.revertedWithCustomError(
+        router,
+        "AmountExceedsVenueLimit"
+      );
+    });
+  });
+
   describe("setVenuePolicy", () => {
     it("only policy admin can call setVenuePolicy", async () => {
       const { router, owner, admin, user } = await loadFixture(deployFixture);

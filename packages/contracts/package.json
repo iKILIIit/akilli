@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "test": "hardhat test --network hardhat",
     "deploy": "hardhat run scripts/deploy.ts --network celo",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network celo-alfajores",
     "register:agent": "tsx scripts/register-erc8004.ts"
