@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchWalletData } from "../../../lib/celo-transactions";
 import { researchAddress } from "../../../lib/linkup";
 import { computeSpendingBreakdown, generateWalletReport } from "@yield-copilot/agents";
+import { rateLimit, getClientKey } from "../../../lib/rate-limit";
 import { z } from "zod";
 
 const insightsRequestSchema = z.object({
@@ -10,6 +11,14 @@ const insightsRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const { allowed, resetAt } = rateLimit(getClientKey(request), 5, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      { status: 429, headers: { "X-RateLimit-Reset": String(resetAt) } }
+    );
+  }
+
   try {
     const body = await request.json();
     const { walletAddress, days } = insightsRequestSchema.parse(body);
