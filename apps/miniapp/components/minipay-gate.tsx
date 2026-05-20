@@ -36,7 +36,13 @@ export function MiniPayGate() {
         </div>
         <div>
           <dt>Wallet</dt>
-          <dd>{runtime.walletAddress ?? (runtime.isLoading ? "Checking wallet" : "Waiting for MiniPay")}</dd>
+          <dd>
+            {runtime.walletAddress
+              ? "Connected"
+              : runtime.isLoading
+                ? "Checking wallet"
+                : "Waiting for MiniPay"}
+          </dd>
         </div>
       </dl>
     </div>

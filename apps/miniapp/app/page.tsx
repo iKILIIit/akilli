@@ -99,6 +99,7 @@ export default function HomePage() {
   const { refreshing: pullRefreshing } = usePullToRefresh({ onRefresh: refreshBalances });
   const [selectedToken, setSelectedToken] = useState<Token>("USDC");
   const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
+  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
 
   useEffect(() => {
@@ -125,7 +126,8 @@ export default function HomePage() {
   useEffect(() => {
     if (miniPay.isLoading || miniPay.walletAddress || !miniPay.isMiniPayProvider || hasTriedAutoConnect) return;
     setHasTriedAutoConnect(true);
-    void miniPay.connect();
+    setIsAutoConnecting(true);
+    void miniPay.connect().finally(() => setIsAutoConnecting(false));
   }, [hasTriedAutoConnect, miniPay]);
 
   useEffect(() => {
@@ -142,8 +144,8 @@ export default function HomePage() {
 
   const canAnalyze = Boolean(miniPay.walletAddress);
   const walletSummary = miniPay.walletAddress
-    ? truncateWalletAddress(miniPay.walletAddress)
-    : miniPay.isMiniPayProvider
+    ? "Connected"
+    : isAutoConnecting || (miniPay.isMiniPayProvider && miniPay.isLoading)
       ? "Auto-connecting"
       : "Wallet required";
 
@@ -154,6 +156,7 @@ export default function HomePage() {
         isLoading={miniPay.isLoading}
         isMiniPayProvider={miniPay.isMiniPayProvider}
         hasProvider={miniPay.hasProvider}
+        isAutoConnecting={isAutoConnecting}
         onConnect={miniPay.connect}
       />
 
@@ -195,7 +198,12 @@ export default function HomePage() {
               <p className="section-label section-label--on-dark">
                 AI Financial Copilot
               </p>
-              <div className="dashboard-hero-home__status" onClick={miniPay.walletAddress ? copyAddress : undefined} style={{ cursor: miniPay.walletAddress ? "pointer" : "default" }}>
+              <div
+                className="dashboard-hero-home__status"
+                onClick={miniPay.walletAddress ? copyAddress : undefined}
+                style={{ cursor: miniPay.walletAddress ? "pointer" : "default" }}
+                title={miniPay.walletAddress ? truncateWalletAddress(miniPay.walletAddress) : undefined}
+              >
                 <span className="dashboard-hero-home__dot" />
                 <span>{addressCopied ? "Copied!" : walletSummary}</span>
               </div>
@@ -248,7 +256,7 @@ export default function HomePage() {
 
           <div className="dashboard-section-head">
             <p className="section-label">Stable balances</p>
-            <span>{pullRefreshing || balancesLoading ? "Refreshing…" : walletSummary}</span>
+            <span>{pullRefreshing || balancesLoading ? "Refreshing…" : miniPay.walletAddress ? "Live" : walletSummary}</span>
           </div>
 
           <div className="wallet-token-grid">
@@ -277,6 +285,13 @@ export default function HomePage() {
             <div className="wallet-empty-card">
               <strong>No stable balances found.</strong>
               <span>Add USDC or USDT to unlock analysis.</span>
+              <a
+                href="https://link.minipay.xyz/add_cash?tokens=USDm,USDC,USDT"
+                className="primary-action"
+                style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
+              >
+                Deposit
+              </a>
             </div>
           ) : null}
 
@@ -358,6 +373,23 @@ export default function HomePage() {
             </Link>
           </div>
         </section>
+
+        <footer style={{ padding: "12px 16px 4px", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
+          {[
+            { label: "Terms", href: "/legal/terms" },
+            { label: "Privacy", href: "/legal/privacy" },
+            { label: "Support", href: "/support" },
+            { label: "Stats", href: "/stats" },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{ fontSize: "0.72rem", color: "var(--ink-55)", textDecoration: "none" }}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </footer>
 
         <BottomNav />
       </div>

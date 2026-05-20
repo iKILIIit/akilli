@@ -5,6 +5,7 @@ type WalletConnectModalProps = {
   isLoading: boolean;
   isMiniPayProvider: boolean;
   hasProvider: boolean;
+  isAutoConnecting?: boolean;
   onConnect: () => Promise<string | undefined>;
 };
 
@@ -13,13 +14,13 @@ export function WalletConnectModal({
   isLoading,
   isMiniPayProvider,
   hasProvider,
+  isAutoConnecting = false,
   onConnect
 }: WalletConnectModalProps) {
-  if (!isOpen) {
+  if (!isOpen || isAutoConnecting) {
     return null;
   }
 
-  const isAutoConnecting = isMiniPayProvider && isLoading;
   const title = isMiniPayProvider ? "Connecting MiniPay wallet" : "Connect your wallet";
   const body = isMiniPayProvider
     ? "MiniPay can attach automatically. Once connected, we will load your stablecoin balances and unlock analysis."
@@ -50,7 +51,7 @@ export function WalletConnectModal({
             }}
             disabled={isLoading}
           >
-            {isAutoConnecting ? "Connecting…" : isMiniPayProvider ? "Retry MiniPay" : "Connect wallet"}
+            {isMiniPayProvider ? "Retry MiniPay" : "Connect wallet"}
           </button>
         ) : (
           <div className="wallet-modal-card__notice">
