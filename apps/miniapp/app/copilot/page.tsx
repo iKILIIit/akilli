@@ -394,7 +394,7 @@ function CopilotInner() {
 
       {/* ── Chat tab ── */}
       {tab === "chat" && (
-        <>
+        <div className="tab-panel-enter" style={{ display: "contents" }}>
           <div className="brief-chip-row" style={{ padding: "10px 16px", overflowX: "auto", flexWrap: "nowrap", borderBottom: "1px solid var(--line)", flexShrink: 0 }}>
             {QUICK_ACTIONS.map(a => (
               <button
@@ -539,12 +539,12 @@ function CopilotInner() {
               <SendIcon disabled={chatLoading || !input.trim()} />
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Insights tab ── */}
       {tab === "insights" && (
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "100px" }}>
+        <div className="tab-panel-enter" style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "100px" }}>
           {insightsLoading && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "16px" }}>
               <div style={{

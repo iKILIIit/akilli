@@ -142,6 +142,19 @@ button {
   animation: fade-in 0.18s ease-out;
 }
 
+.tab-panel-enter {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
 .app-surface--minimal {
   gap: 18px;
 }
