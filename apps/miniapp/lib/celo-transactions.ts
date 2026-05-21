@@ -1,4 +1,5 @@
-const CELOSCAN_BASE = "https://api.celoscan.io/api";
+// Celoscan V1 is deprecated — use Blockscout's Etherscan-compatible API (no key required)
+const CELOSCAN_BASE = "https://celo.blockscout.com/api";
 
 const KNOWN_TOKENS: Record<string, string> = {
   "0xceba9300f2b948710d2653dd7b07f33a8b32118c": "USDC",
@@ -66,11 +67,10 @@ export type WalletSummary = {
 async function celoscan(params: Record<string, string>): Promise<{ result: CeloTransaction[] }> {
   const url = new URL(CELOSCAN_BASE);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const apiKey = process.env.CELOSCAN_API_KEY ?? "YourApiKeyToken";
-  url.searchParams.set("apikey", apiKey);
+  if (process.env.CELOSCAN_API_KEY) url.searchParams.set("apikey", process.env.CELOSCAN_API_KEY);
 
   const res = await fetch(url.toString(), { next: { revalidate: 300 } });
-  if (!res.ok) throw new Error(`Celoscan error: ${res.status}`);
+  if (!res.ok) throw new Error(`Blockscout error: ${res.status}`);
   return res.json();
 }
 

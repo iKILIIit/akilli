@@ -10,6 +10,35 @@ import { useMiniPay } from "../hooks/use-minipay";
 import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useStableTokenBalances } from "../hooks/use-stable-token-balances";
 
+function USDCLogo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <circle cx="16" cy="16" r="16" fill="#2775CA" />
+      <circle cx="16" cy="16" r="12.8" fill="white" fillOpacity="0.15" />
+      <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" fill="none" />
+      <text x="16" y="20" textAnchor="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="Arial,sans-serif">USDC</text>
+      <circle cx="16" cy="16" r="15" stroke="white" strokeOpacity="0.2" strokeWidth="0.5" fill="none" />
+    </svg>
+  );
+}
+
+function USDTLogo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <circle cx="16" cy="16" r="16" fill="#26A17B" />
+      <circle cx="16" cy="16" r="12.8" fill="white" fillOpacity="0.15" />
+      <text x="16" y="21" textAnchor="middle" fill="white" fontSize="15" fontWeight="700" fontFamily="Arial,sans-serif">₮</text>
+      <circle cx="16" cy="16" r="15" stroke="white" strokeOpacity="0.2" strokeWidth="0.5" fill="none" />
+    </svg>
+  );
+}
+
+function TokenLogo({ symbol }: { symbol: string }) {
+  if (symbol === "USDC") return <USDCLogo />;
+  if (symbol === "USDT") return <USDTLogo />;
+  return <span className={`token-card__dot token-card__dot--${symbol.toLowerCase()}`} aria-hidden="true" />;
+}
+
 function SearchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -275,7 +304,7 @@ export default function HomePage() {
                 aria-pressed={selectedToken === balance.symbol}
                 aria-label={`${balance.symbol} balance: ${balance.displayAmount}`}
               >
-                <span className={`token-card__dot token-card__dot--${balance.symbol.toLowerCase()}`} aria-hidden="true" />
+                <TokenLogo symbol={balance.symbol} />
                 <strong>{balance.symbol}</strong>
                 <small>{balance.displayAmount}</small>
               </button>
