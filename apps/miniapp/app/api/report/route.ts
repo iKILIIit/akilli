@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchWalletData } from "../../../lib/celo-transactions";
 import { researchAddress } from "../../../lib/linkup";
 import { generateWalletReport } from "@yield-copilot/agents";
+import { rateLimit, getClientKey } from "../../../lib/rate-limit";
 import { z } from "zod";
 
 const reportRequestSchema = z.object({
@@ -11,6 +12,21 @@ const reportRequestSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const { allowed, remaining, resetAt } = rateLimit(getClientKey(request), 10, 60_000);
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      {
+        status: 429,
+        headers: {
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(resetAt)
+        }
+      }
+    );
+  }
+
   try {
     const body = await request.json();
     const { walletAddress, reportType, days } = reportRequestSchema.parse(body);
@@ -29,12 +45,10 @@ export async function POST(request: NextRequest) {
 
     const analysis = await generateWalletReport(wallet, reportType, linkupContext);
 
-    return NextResponse.json({
-      ...analysis,
-      walletAddress,
-      transactionCount: wallet.transactions.length,
-      periodDays: days
-    });
+    return NextResponse.json(
+      { ...analysis, walletAddress, transactionCount: wallet.transactions.length, periodDays: days },
+      { headers: { "X-RateLimit-Remaining": String(remaining) } }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Request failed" },

@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.97.1",
     "@yield-copilot/celo": "workspace:*",
-    "@yield-copilot/shared": "workspace:*"
+    "@yield-copilot/shared": "workspace:*",
+    "openai": "^6.38.0"
   },
   "devDependencies": {
     "vitest": "^2.0.0"

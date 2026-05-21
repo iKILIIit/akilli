@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 // Local type mirror of packages/miniapp/lib/celo-transactions to avoid cross-package FS imports
 export type ParsedTransaction = {
@@ -26,8 +26,11 @@ export type WalletSummary = {
   fetchedAt: string;
 };
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = "claude-opus-4-7";
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+const MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3.5-sonnet";
 
 export type ReportType =
   | "spending-advice"
@@ -245,17 +248,17 @@ export async function generateWalletReport(
   const prompt = PROMPTS[reportType](wallet);
   const userPrompt = `${prompt}\n\nWALLET DATA:\n${walletContext}`;
 
-  const response = await anthropic.messages.create({
+  const completion = await openai.chat.completions.create({
     model: MODEL,
+    messages: [
+      { role: "system", content: SYSTEM_BASE },
+      { role: "user", content: userPrompt }
+    ],
+    temperature: 0.4,
     max_tokens: 2048,
-    system: SYSTEM_BASE,
-    messages: [{ role: "user", content: userPrompt }]
   });
 
-  const narrative =
-    response.content[0]?.type === "text"
-      ? response.content[0].text
-      : "Unable to generate report.";
+  const narrative = completion.choices[0]?.message?.content ?? "Unable to generate report.";
 
   const keyFindings = narrative
     .split("\n")
@@ -300,16 +303,17 @@ ${walletContext}
 
 Answer questions directly using this data. If you don't recognise a specific transaction or address, say so honestly. Keep answers concise and conversational.`;
 
-  const response = await anthropic.messages.create({
+  const completion = await openai.chat.completions.create({
     model: MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.map(m => ({ role: m.role, content: m.content }))
+    ],
+    temperature: 0.5,
     max_tokens: 1024,
-    system: systemPrompt,
-    messages: messages.map(m => ({ role: m.role, content: m.content }))
   });
 
-  return response.content[0]?.type === "text"
-    ? response.content[0].text
-    : "I couldn't generate a response. Please try again.";
+  return completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
 }
 
 export function buildTransactionContext(txs: ParsedTransaction[]): string {
