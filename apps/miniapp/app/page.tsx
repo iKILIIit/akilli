@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "../components/bottom-nav";
 import { CurrencyConverter } from "../components/currency-converter";
-import { SavingsCalculator } from "../components/savings-calculator";
 import { SpendingAlertModal } from "../components/spending-alert-modal";
 import { WalletConnectModal } from "../components/wallet-connect-modal";
 import { useMiniPay } from "../hooks/use-minipay";
@@ -357,8 +356,6 @@ export default function HomePage() {
           </div>
 
           <CurrencyConverter />
-
-          <SavingsCalculator />
 
           {miniPay.walletAddress && !balancesLoading && positiveBalances.length === 0 ? (
             <div className="wallet-empty-card">
