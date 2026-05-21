@@ -5,11 +5,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "../components/bottom-nav";
+import { CurrencyConverter } from "../components/currency-converter";
 import { SpendingAlertModal } from "../components/spending-alert-modal";
 import { WalletConnectModal } from "../components/wallet-connect-modal";
 import { useMiniPay } from "../hooks/use-minipay";
 import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useStableTokenBalances } from "../hooks/use-stable-token-balances";
+import {
+  type FxRates,
+  type LocalCurrency,
+  CURRENCY_META,
+  convertUSD,
+  fetchFxRates,
+  formatLocal,
+  getPreferredCurrency,
+  setPreferredCurrency,
+} from "../lib/currency";
 
 function USDCLogo() {
   return (
@@ -122,6 +133,8 @@ function truncateWalletAddress(address?: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
+const LOCAL_CURRENCIES: LocalCurrency[] = ["USD", "NGN", "KES", "GHS", "ZAR"];
+
 export default function HomePage() {
   const router = useRouter();
   const miniPay = useMiniPay();
@@ -132,6 +145,9 @@ export default function HomePage() {
   const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
+  const [localCurrency, setLocalCurrency] = useState<LocalCurrency>("USD");
+  const [fxRates, setFxRates] = useState<FxRates | null>(null);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
   useEffect(() => {
     try {
@@ -140,6 +156,11 @@ export default function HomePage() {
       }
     } catch { /* ignore — SSR or restricted */ }
   }, [router]);
+
+  useEffect(() => {
+    setLocalCurrency(getPreferredCurrency());
+    void fetchFxRates().then(setFxRates);
+  }, []);
 
   function copyAddress() {
     if (!miniPay.walletAddress) return;
@@ -251,6 +272,62 @@ export default function HomePage() {
                 : miniPay.walletAddress
                   ? "0 stable balance"
                   : "••••"}
+            </div>
+
+            {/* Local currency equivalent */}
+            {miniPay.walletAddress && fxRates && localCurrency !== "USD" && (() => {
+              const total = positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0);
+              return total > 0 ? (
+                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
+                  ≈ {formatLocal(convertUSD(total, localCurrency, fxRates), localCurrency)}
+                </div>
+              ) : null;
+            })()}
+
+            {/* Currency selector */}
+            <div style={{ position: "relative", marginTop: "8px" }}>
+              <button
+                type="button"
+                onClick={() => setShowCurrencyPicker(p => !p)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
+                  borderRadius: "999px", padding: "3px 10px", cursor: "pointer",
+                  fontSize: "11px", color: "rgba(255,255,255,0.85)", fontWeight: 600
+                }}
+              >
+                {CURRENCY_META[localCurrency].flag} {localCurrency} ▾
+              </button>
+              {showCurrencyPicker && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 50,
+                  background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "14px",
+                  padding: "6px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                  display: "flex", flexDirection: "column", gap: "2px", minWidth: "160px"
+                }}>
+                  {LOCAL_CURRENCIES.map(cur => (
+                    <button
+                      key={cur}
+                      type="button"
+                      onClick={() => {
+                        setLocalCurrency(cur);
+                        setPreferredCurrency(cur);
+                        setShowCurrencyPicker(false);
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: "8px 10px", borderRadius: "10px", border: "none",
+                        background: cur === localCurrency ? "var(--bg-soft)" : "transparent",
+                        cursor: "pointer", fontSize: "13px", color: "var(--ink)", textAlign: "left"
+                      }}
+                    >
+                      <span>{CURRENCY_META[cur].flag}</span>
+                      <span style={{ fontWeight: cur === localCurrency ? 700 : 400 }}>{cur}</span>
+                      <span style={{ fontSize: "11px", color: "var(--ink-40)", marginLeft: "auto" }}>{CURRENCY_META[cur].symbol}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="dashboard-hero-home__eye">
@@ -386,6 +463,8 @@ export default function HomePage() {
               </span>
             </Link>
           </div>
+
+          <CurrencyConverter />
 
           <div className="dashboard-insight-row">
             <Link

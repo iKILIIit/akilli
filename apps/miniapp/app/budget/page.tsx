@@ -6,13 +6,28 @@ import { BottomNav } from "../../components/bottom-nav";
 import { useMiniPay } from "../../hooks/use-minipay";
 import { useStableTokenBalances } from "../../hooks/use-stable-token-balances";
 import { type AlertPeriod } from "../../lib/budget-store";
+import { upsertContact, getContactMap, resolveLabel } from "../../lib/contacts";
+import {
+  type FxRates,
+  type LocalCurrency,
+  CURRENCY_META,
+  convertUSD,
+  fetchFxRates,
+  formatLocal,
+  getPreferredCurrency,
+  setPreferredCurrency,
+} from "../../lib/currency";
+import { getAllNotes, setNote } from "../../lib/notes";
+import { detectRecurring } from "../../lib/recurring";
 
 type Tx = {
+  hash: string;
   timestamp: number;
   type: string;
   category: string;
   amount: string;
   token: string;
+  counterparty: string;
   counterpartyLabel: string;
 };
 
@@ -37,6 +52,8 @@ const CATEGORY_META: Record<string, { label: string; color: string; emoji: strin
   unknown:  { label: "Other",           color: "#94A3B8", emoji: "📦" },
 };
 
+const FREQ_LABEL = { weekly: "Weekly", biweekly: "Bi-weekly", monthly: "Monthly" };
+
 function BackIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -45,8 +62,25 @@ function BackIcon() {
   );
 }
 
-function BudgetBar({ label, emoji, color, actual, limit }: {
-  label: string; emoji: string; color: string; actual: number; limit?: number;
+function EditIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+      <path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NoteIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M4.5 5h5M4.5 7.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BudgetBar({ label, emoji, color, actual, limit, localAmt }: {
+  label: string; emoji: string; color: string; actual: number; limit?: number; localAmt?: string | undefined;
 }) {
   const pct = limit ? Math.min(100, (actual / limit) * 100) : 0;
   const over = limit ? actual > limit : false;
@@ -57,9 +91,14 @@ function BudgetBar({ label, emoji, color, actual, limit }: {
         <span style={{ fontSize: "13px", color: "var(--ink-70)", display: "flex", alignItems: "center", gap: "5px" }}>
           <span>{emoji}</span> {label}
         </span>
-        <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: over ? "var(--coral-ink)" : "var(--ink-70)", fontWeight: 600 }}>
-          ${actual.toFixed(2)}{limit ? ` / $${limit}` : ""}
-        </span>
+        <div style={{ textAlign: "right" }}>
+          <span style={{ fontSize: "12px", fontFamily: "var(--font-mono)", color: over ? "var(--coral-ink)" : "var(--ink-70)", fontWeight: 600 }}>
+            ${actual.toFixed(2)}{limit ? ` / $${limit}` : ""}
+          </span>
+          {localAmt && (
+            <div style={{ fontSize: "10px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>{localAmt}</div>
+          )}
+        </div>
       </div>
       {limit ? (
         <div style={{ height: "6px", borderRadius: "3px", background: "var(--line)", overflow: "hidden" }}>
@@ -80,10 +119,35 @@ export default function BudgetPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Currency
+  const [localCurrency, setLocalCurrency] = useState<LocalCurrency>("USD");
+  const [fxRates, setFxRates] = useState<FxRates | null>(null);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+
+  // Contacts
+  const [contactMap, setContactMap] = useState<Map<string, string>>(new Map());
+  const [editingContact, setEditingContact] = useState<string | null>(null);
+  const [contactText, setContactText] = useState("");
+
+  // Notes
+  const [allNotes, setAllNotes] = useState<Record<string, string>>({});
+  const [editingNote, setEditingNote] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
+
+  // Transaction list toggle
+  const [showTxList, setShowTxList] = useState(false);
+
   const totalBalance = useMemo(
     () => balances.reduce((s, b) => s + (parseFloat(b.displayAmount.replace(/,/g, "")) || 0), 0),
     [balances]
   );
+
+  useEffect(() => {
+    setLocalCurrency(getPreferredCurrency());
+    void fetchFxRates().then(setFxRates);
+    setContactMap(getContactMap());
+    setAllNotes(getAllNotes());
+  }, []);
 
   useEffect(() => {
     if (!walletAddress) return;
@@ -105,16 +169,12 @@ export default function BudgetPage() {
   );
 
   const totalSpent = useMemo(
-    () => periodTxs
-      .filter(t => t.type === "sent" || t.type === "contract")
-      .reduce((s, t) => s + parseFloat(t.amount), 0),
+    () => periodTxs.filter(t => t.type === "sent" || t.type === "contract").reduce((s, t) => s + parseFloat(t.amount), 0),
     [periodTxs]
   );
 
   const totalReceived = useMemo(
-    () => periodTxs
-      .filter(t => t.type === "received")
-      .reduce((s, t) => s + parseFloat(t.amount), 0),
+    () => periodTxs.filter(t => t.type === "received").reduce((s, t) => s + parseFloat(t.amount), 0),
     [periodTxs]
   );
 
@@ -127,15 +187,68 @@ export default function BudgetPage() {
     return map;
   }, [periodTxs]);
 
-  // top 5 counterparties (sent)
   const topCounterparties = useMemo(() => {
-    const map: Record<string, number> = {};
+    const map = new Map<string, { amount: number; address: string }>();
     for (const tx of periodTxs) {
       if (tx.type !== "sent" && tx.type !== "contract") continue;
-      map[tx.counterpartyLabel] = (map[tx.counterpartyLabel] ?? 0) + parseFloat(tx.amount);
+      const key = tx.counterpartyLabel;
+      const entry = map.get(key) ?? { amount: 0, address: tx.counterparty };
+      entry.amount += parseFloat(tx.amount);
+      map.set(key, entry);
     }
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [periodTxs]);
+    return Array.from(map.entries())
+      .map(([label, { amount, address }]) => ({
+        label,
+        displayName: resolveLabel(label, contactMap),
+        amount,
+        address,
+      }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+  }, [periodTxs, contactMap]);
+
+  const recurringPatterns = useMemo(
+    () => wallet ? detectRecurring(wallet.transactions.map(t => ({
+      timestamp: t.timestamp,
+      type: t.type,
+      amount: t.amount,
+      counterpartyLabel: resolveLabel(t.counterpartyLabel, contactMap),
+    }))) : [],
+    [wallet, contactMap]
+  );
+
+  const txList = useMemo(
+    () => [...periodTxs].sort((a, b) => b.timestamp - a.timestamp),
+    [periodTxs]
+  );
+
+  function toLocal(usd: number): string | undefined {
+    if (!fxRates || localCurrency === "USD") return undefined;
+    return formatLocal(convertUSD(usd, localCurrency, fxRates), localCurrency);
+  }
+
+  function saveContactName() {
+    if (!editingContact) return;
+    upsertContact(editingContact, contactText);
+    setContactMap(getContactMap());
+    setEditingContact(null);
+    setContactText("");
+  }
+
+  function saveNote(hash: string) {
+    setNote(hash, noteText);
+    setAllNotes(getAllNotes());
+    setEditingNote(null);
+    setNoteText("");
+  }
+
+  function formatDate(ts: number): string {
+    return new Date(ts * 1000).toLocaleDateString("en", { month: "short", day: "numeric" });
+  }
+
+  function isAddressLike(label: string): boolean {
+    return /^0x[0-9a-fA-F]{4,}/.test(label) || (label.includes("…") && label.startsWith("0x"));
+  }
 
   if (!walletAddress) {
     return (
@@ -179,6 +292,52 @@ export default function BudgetPage() {
               <div style={{ color: "var(--ink)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.02em" }}>Spend Sheet</div>
               <div style={{ color: "var(--ink-55)", fontSize: "11px" }}>Where your money went</div>
             </div>
+
+            {/* Currency selector */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={() => setShowCurrencyPicker(p => !p)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  background: "var(--bg-soft)", border: "1px solid var(--line)",
+                  borderRadius: "999px", padding: "4px 10px", cursor: "pointer",
+                  fontSize: "11px", color: "var(--ink-70)", fontWeight: 600
+                }}
+              >
+                {CURRENCY_META[localCurrency].flag} {localCurrency} ▾
+              </button>
+              {showCurrencyPicker && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 50,
+                  background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "14px",
+                  padding: "6px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+                  display: "flex", flexDirection: "column", gap: "2px", minWidth: "160px"
+                }}>
+                  {(["USD", "NGN", "KES", "GHS", "ZAR"] as LocalCurrency[]).map(cur => (
+                    <button
+                      key={cur}
+                      type="button"
+                      onClick={() => {
+                        setLocalCurrency(cur);
+                        setPreferredCurrency(cur);
+                        setShowCurrencyPicker(false);
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: "8px 10px", borderRadius: "10px", border: "none",
+                        background: cur === localCurrency ? "var(--bg-soft)" : "transparent",
+                        cursor: "pointer", fontSize: "13px", color: "var(--ink)", textAlign: "left"
+                      }}
+                    >
+                      <span>{CURRENCY_META[cur].flag}</span>
+                      <span style={{ fontWeight: cur === localCurrency ? 700 : 400 }}>{cur}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Link href="/alerts" style={{ fontSize: "11px", color: "var(--ink-55)", textDecoration: "none", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: "8px" }}>
               Set Alerts
             </Link>
@@ -209,11 +368,7 @@ export default function BudgetPage() {
             </div>
           )}
 
-          {error && (
-            <div className="notice-card danger">
-              <strong>{error}</strong>
-            </div>
-          )}
+          {error && <div className="notice-card danger"><strong>{error}</strong></div>}
 
           {!loading && wallet && (
             <>
@@ -224,13 +379,19 @@ export default function BudgetPage() {
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--coral-ink)", fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>
                     ${totalSpent.toFixed(2)}
                   </div>
-                  <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "2px" }}>{periodTxs.filter(t => t.type === "sent" || t.type === "contract").length} transactions</div>
+                  {toLocal(totalSpent) && (
+                    <div style={{ fontSize: "11px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>≈ {toLocal(totalSpent)}</div>
+                  )}
+                  <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "2px" }}>{periodTxs.filter(t => t.type === "sent" || t.type === "contract").length} txns</div>
                 </div>
                 <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "14px" }}>
                   <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Received</div>
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--green-ink)", fontFamily: "var(--font-mono)", letterSpacing: "-0.02em" }}>
                     ${totalReceived.toFixed(2)}
                   </div>
+                  {toLocal(totalReceived) && (
+                    <div style={{ fontSize: "11px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>≈ {toLocal(totalReceived)}</div>
+                  )}
                   <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "2px" }}>Balance: ${totalBalance.toFixed(2)}</div>
                 </div>
               </div>
@@ -239,11 +400,15 @@ export default function BudgetPage() {
               <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                   <span style={{ fontSize: "12px", color: "var(--ink-55)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Net position</span>
-                  <span style={{ fontSize: "15px", fontWeight: 700, color: (totalReceived - totalSpent) >= 0 ? "var(--green-ink)" : "var(--coral-ink)", fontFamily: "var(--font-mono)" }}>
-                    {(totalReceived - totalSpent) >= 0 ? "+" : ""}${(totalReceived - totalSpent).toFixed(2)}
-                  </span>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: "15px", fontWeight: 700, color: (totalReceived - totalSpent) >= 0 ? "var(--green-ink)" : "var(--coral-ink)", fontFamily: "var(--font-mono)" }}>
+                      {(totalReceived - totalSpent) >= 0 ? "+" : ""}${(totalReceived - totalSpent).toFixed(2)}
+                    </span>
+                    {toLocal(Math.abs(totalReceived - totalSpent)) && (
+                      <div style={{ fontSize: "10px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>≈ {toLocal(Math.abs(totalReceived - totalSpent))}</div>
+                    )}
+                  </div>
                 </div>
-                {/* in/out bar */}
                 {(totalReceived + totalSpent) > 0 && (
                   <div style={{ height: "8px", borderRadius: "4px", overflow: "hidden", background: "var(--line)", display: "flex" }}>
                     <div style={{ height: "100%", width: `${(totalReceived / (totalReceived + totalSpent)) * 100}%`, background: "var(--green)", transition: "width 0.6s ease" }} />
@@ -274,6 +439,7 @@ export default function BudgetPage() {
                             emoji={meta.emoji}
                             color={meta.color}
                             actual={amt}
+                            localAmt={toLocal(amt)}
                           />
                         );
                       })}
@@ -281,26 +447,182 @@ export default function BudgetPage() {
                 </div>
               )}
 
-              {/* Top counterparties */}
+              {/* Top payees */}
               {topCounterparties.length > 0 && (
                 <div>
                   <div className="dashboard-section-head" style={{ marginBottom: "10px" }}>
                     <p className="section-label">Top payees</p>
+                    <span style={{ fontSize: "11px", color: "var(--ink-40)" }}>Tap name to rename</span>
                   </div>
                   <div className="list-card">
-                    {topCounterparties.map(([label, amt], i) => (
-                      <div key={label} className={`list-card__row${i === topCounterparties.length - 1 ? " list-card__row--last" : ""}`}>
-                        <div style={{ flex: 1 }}>
-                          <strong style={{ fontSize: "13px" }}>{label}</strong>
-                        </div>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--coral-ink)", fontFamily: "var(--font-mono)" }}>
-                          ${amt.toFixed(2)}
-                        </span>
+                    {topCounterparties.map(({ label, displayName, amount }, i) => (
+                      <div key={label} className={`list-card__row${i === topCounterparties.length - 1 ? " list-card__row--last" : ""}`} style={{ flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+                        {editingContact === label ? (
+                          <div style={{ display: "flex", gap: "6px", width: "100%", alignItems: "center" }}>
+                            <input
+                              type="text"
+                              value={contactText}
+                              onChange={e => setContactText(e.target.value)}
+                              placeholder="Enter a name…"
+                              autoFocus
+                              style={{ flex: 1, fontSize: "13px", padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--line)", background: "var(--bg-soft)", outline: "none", color: "var(--ink)" }}
+                              onKeyDown={e => { if (e.key === "Enter") saveContactName(); if (e.key === "Escape") { setEditingContact(null); setContactText(""); } }}
+                            />
+                            <button type="button" onClick={saveContactName} style={{ padding: "6px 12px", borderRadius: "8px", background: "var(--ink)", color: "#fffdf7", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>Save</button>
+                            <button type="button" onClick={() => { setEditingContact(null); setContactText(""); }} style={{ padding: "6px 8px", borderRadius: "8px", background: "transparent", border: "1px solid var(--line)", fontSize: "12px", cursor: "pointer", color: "var(--ink-55)" }}>✕</button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                            <div style={{ flex: 1 }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isAddressLike(label)) {
+                                    setEditingContact(label);
+                                    setContactText(displayName !== label ? displayName : "");
+                                  }
+                                }}
+                                style={{
+                                  background: "none", border: "none", padding: 0, cursor: isAddressLike(label) ? "pointer" : "default",
+                                  fontSize: "13px", fontWeight: 600, color: "var(--ink)", display: "flex", alignItems: "center", gap: "5px"
+                                }}
+                              >
+                                {displayName}
+                                {isAddressLike(label) && <span style={{ color: "var(--ink-40)" }}><EditIcon /></span>}
+                              </button>
+                              {displayName !== label && (
+                                <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "1px" }}>{label}</div>
+                              )}
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--coral-ink)", fontFamily: "var(--font-mono)" }}>
+                                ${amount.toFixed(2)}
+                              </span>
+                              {toLocal(amount) && (
+                                <div style={{ fontSize: "10px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>{toLocal(amount)}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Recurring payments */}
+              {recurringPatterns.length > 0 && (
+                <div>
+                  <div className="dashboard-section-head" style={{ marginBottom: "10px" }}>
+                    <p className="section-label">🔁 Recurring payments</p>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {recurringPatterns.map(pat => {
+                      const daysUntil = Math.round((pat.nextExpected - Date.now() / 1000) / 86400);
+                      const overdue = daysUntil < 0;
+                      return (
+                        <div key={pat.counterparty} style={{
+                          background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "16px",
+                          padding: "12px 14px", display: "flex", alignItems: "center", gap: "10px"
+                        }}>
+                          <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "var(--bg-soft)", border: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>🔁</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pat.counterparty}</div>
+                            <div style={{ fontSize: "11px", color: "var(--ink-55)" }}>
+                              {FREQ_LABEL[pat.frequency]} · {pat.occurrences}× · avg ${pat.avgAmount.toFixed(2)}
+                              {toLocal(pat.avgAmount) && ` ≈ ${toLocal(pat.avgAmount)}`}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: "11px", fontWeight: 600, color: overdue ? "var(--coral-ink)" : "var(--green-ink)" }}>
+                              {overdue ? `${Math.abs(daysUntil)}d overdue` : daysUntil === 0 ? "Due today" : `In ${daysUntil}d`}
+                            </div>
+                            <div style={{ fontSize: "10px", color: "var(--ink-40)" }}>next expected</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Transaction list */}
+              <div>
+                <div className="dashboard-section-head" style={{ marginBottom: "10px" }}>
+                  <p className="section-label">Transactions</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowTxList(p => !p)}
+                    style={{ fontSize: "11px", color: "var(--ink-55)", background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}
+                  >
+                    {showTxList ? "Hide" : `Show ${txList.length}`}
+                  </button>
+                </div>
+
+                {showTxList && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {txList.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "20px", color: "var(--ink-55)", fontSize: "13px" }}>No transactions in this period.</div>
+                    ) : txList.map(tx => {
+                      const isOut = tx.type === "sent" || tx.type === "contract";
+                      const contactName = resolveLabel(tx.counterpartyLabel, contactMap);
+                      const note = allNotes[tx.hash] ?? "";
+                      return (
+                        <div key={tx.hash} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "14px", padding: "10px 12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ fontSize: "18px", flexShrink: 0 }}>
+                              {tx.type === "received" ? "📥" : tx.type === "failed" ? "❌" : tx.category === "defi" ? "🌱" : "📤"}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {contactName}
+                              </div>
+                              <div style={{ fontSize: "10px", color: "var(--ink-40)" }}>{formatDate(tx.timestamp)} · {tx.token}</div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <div style={{ fontSize: "13px", fontWeight: 700, color: isOut ? "var(--coral-ink)" : "var(--green-ink)", fontFamily: "var(--font-mono)" }}>
+                                {isOut ? "-" : "+"}${parseFloat(tx.amount).toFixed(2)}
+                              </div>
+                              {toLocal(parseFloat(tx.amount)) && (
+                                <div style={{ fontSize: "10px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>
+                                  {toLocal(parseFloat(tx.amount))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Note */}
+                          {editingNote === tx.hash ? (
+                            <div style={{ marginTop: "8px", display: "flex", gap: "6px" }}>
+                              <input
+                                type="text"
+                                value={noteText}
+                                onChange={e => setNoteText(e.target.value)}
+                                placeholder="Add a note…"
+                                autoFocus
+                                maxLength={120}
+                                style={{ flex: 1, fontSize: "12px", padding: "5px 8px", borderRadius: "8px", border: "1px solid var(--line)", background: "var(--bg-soft)", outline: "none", color: "var(--ink)" }}
+                                onKeyDown={e => { if (e.key === "Enter") saveNote(tx.hash); if (e.key === "Escape") { setEditingNote(null); setNoteText(""); } }}
+                              />
+                              <button type="button" onClick={() => saveNote(tx.hash)} style={{ padding: "5px 10px", borderRadius: "8px", background: "var(--ink)", color: "#fffdf7", border: "none", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>Save</button>
+                              <button type="button" onClick={() => { setEditingNote(null); setNoteText(""); }} style={{ padding: "5px 8px", borderRadius: "8px", background: "transparent", border: "1px solid var(--line)", fontSize: "11px", cursor: "pointer", color: "var(--ink-55)" }}>✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => { setEditingNote(tx.hash); setNoteText(note); }}
+                              style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", padding: 0, cursor: "pointer", color: note ? "var(--ink-55)" : "var(--ink-40)", fontSize: "11px" }}
+                            >
+                              <NoteIcon />
+                              {note || "Add note"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {periodTxs.length === 0 && (
                 <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-55)", fontSize: "14px" }}>
