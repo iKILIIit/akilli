@@ -16,6 +16,7 @@
     "@yield-copilot/celo": "workspace:*",
     "@yield-copilot/shared": "workspace:*",
     "@yield-copilot/ui": "workspace:*",
+    "jspdf": "^4.2.1",
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
