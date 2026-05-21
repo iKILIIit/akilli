@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 // Local type mirror of packages/miniapp/lib/celo-transactions to avoid cross-package FS imports
 export type ParsedTransaction = {
@@ -26,8 +26,8 @@ export type WalletSummary = {
   fetchedAt: string;
 };
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const MODEL = "claude-opus-4-7";
 
 export type ReportType =
   | "spending-advice"
@@ -245,16 +245,17 @@ export async function generateWalletReport(
   const prompt = PROMPTS[reportType](wallet);
   const userPrompt = `${prompt}\n\nWALLET DATA:\n${walletContext}`;
 
-  const completion = await openai.chat.completions.create({
+  const response = await anthropic.messages.create({
     model: MODEL,
-    messages: [
-      { role: "system", content: SYSTEM_BASE },
-      { role: "user", content: userPrompt }
-    ],
-    temperature: 0.4
+    max_tokens: 2048,
+    system: SYSTEM_BASE,
+    messages: [{ role: "user", content: userPrompt }]
   });
 
-  const narrative = completion.choices[0]?.message?.content ?? "Unable to generate report.";
+  const narrative =
+    response.content[0]?.type === "text"
+      ? response.content[0].text
+      : "Unable to generate report.";
 
   const keyFindings = narrative
     .split("\n")
@@ -299,16 +300,16 @@ ${walletContext}
 
 Answer questions directly using this data. If you don't recognise a specific transaction or address, say so honestly. Keep answers concise and conversational.`;
 
-  const completion = await openai.chat.completions.create({
+  const response = await anthropic.messages.create({
     model: MODEL,
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages.map(m => ({ role: m.role, content: m.content }))
-    ],
-    temperature: 0.5
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: messages.map(m => ({ role: m.role, content: m.content }))
   });
 
-  return completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
+  return response.content[0]?.type === "text"
+    ? response.content[0].text
+    : "I couldn't generate a response. Please try again.";
 }
 
 export function buildTransactionContext(txs: ParsedTransaction[]): string {

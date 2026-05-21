@@ -96,6 +96,7 @@ export default function HomePage() {
   const router = useRouter();
   const miniPay = useMiniPay();
   const { balances, isLoading: balancesLoading, refresh: refreshBalances } = useStableTokenBalances(miniPay.walletAddress);
+  const isMiniPay = miniPay.isMiniPayProvider;
   const { refreshing: pullRefreshing } = usePullToRefresh({ onRefresh: refreshBalances });
   const [selectedToken, setSelectedToken] = useState<Token>("USDC");
   const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
@@ -285,13 +286,25 @@ export default function HomePage() {
             <div className="wallet-empty-card">
               <strong>No stable balances found.</strong>
               <span>Add USDC or USDT to unlock analysis.</span>
-              <a
-                href="https://link.minipay.xyz/add_cash?tokens=USDm,USDC,USDT"
-                className="primary-action"
-                style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
-              >
-                Deposit
-              </a>
+              {isMiniPay ? (
+                <a
+                  href="https://link.minipay.xyz/add_cash?tokens=USDm,USDC,USDT"
+                  className="primary-action"
+                  style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
+                >
+                  Deposit via MiniPay
+                </a>
+              ) : (
+                <a
+                  href="https://minipay.opera.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="primary-action"
+                  style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
+                >
+                  Get MiniPay to deposit
+                </a>
+              )}
             </div>
           ) : null}
 
