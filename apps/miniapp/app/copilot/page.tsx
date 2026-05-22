@@ -199,25 +199,24 @@ async function downloadStatement(content: string, address: string) {
     doc.text(`Page ${i} of ${totalPages}`, pageW - margin, ph - 7, { align: "right" });
   }
 
-  const blob = doc.output("blob");
   const filename = `akili-statement-${address.slice(0, 6)}-${date}.pdf`;
-  const file = new File([blob], filename, { type: "application/pdf" });
 
-  // Web Share API — triggers native share/save sheet on iOS and Android WebViews
+  // Try Web Share API first (iOS Safari, some Android browsers)
+  const blob = doc.output("blob");
+  const file = new File([blob], filename, { type: "application/pdf" });
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: "Akili Wallet Statement" });
     return;
   }
 
-  // Desktop fallback
-  const url = URL.createObjectURL(blob);
+  // Android WebView rejects blob: URIs — use base64 data URI instead
+  const dataUri = doc.output("datauristring");
   const a = document.createElement("a");
-  a.href = url;
+  a.href = dataUri;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 // ── Charts ────────────────────────────────────────────────────────────────────
