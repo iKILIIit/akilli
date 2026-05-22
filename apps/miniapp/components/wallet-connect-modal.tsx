@@ -24,7 +24,7 @@ export function WalletConnectModal({
   const title = isMiniPayProvider ? "Connecting MiniPay wallet" : "Connect your wallet";
   const body = isMiniPayProvider
     ? "MiniPay can attach automatically. Once connected, we will load your stablecoin balances and unlock analysis."
-    : "Connect a wallet to load your USDC and USDT balances and unlock AI analysis.";
+    : "Connect any Celo-compatible wallet — MiniPay, MetaMask, or Coinbase Wallet — to unlock AI analysis.";
 
   return (
     <div className="wallet-modal-shell" role="dialog" aria-modal="true" aria-labelledby="wallet-modal-title">
@@ -38,24 +38,36 @@ export function WalletConnectModal({
 
         <div className="wallet-modal-card__points">
           <div>Connect once</div>
-          <div>See available stablecoins</div>
-          <div>Run the check with real balances</div>
+          <div>See your stablecoin balances</div>
+          <div>Run AI analysis on your real activity</div>
         </div>
 
         {hasProvider ? (
           <button
             type="button"
             className="primary-action wallet-modal-card__action"
-            onClick={() => {
-              void onConnect();
-            }}
+            onClick={() => { void onConnect(); }}
             disabled={isLoading}
           >
             {isMiniPayProvider ? "Retry MiniPay" : "Connect wallet"}
           </button>
         ) : (
-          <div className="wallet-modal-card__notice">
-            No wallet provider was detected in this browser. Open the app in MiniPay or a wallet-enabled browser.
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div className="wallet-modal-card__notice">
+              No wallet detected in this browser.
+            </div>
+            <a
+              href="https://metamask.io/download/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="primary-action wallet-modal-card__action"
+              style={{ textDecoration: "none", textAlign: "center" }}
+            >
+              Install MetaMask
+            </a>
+            <p style={{ fontSize: "12px", color: "var(--ink-55)", textAlign: "center", margin: 0 }}>
+              Or open in MiniPay on mobile
+            </p>
           </div>
         )}
       </div>

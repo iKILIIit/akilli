@@ -343,15 +343,9 @@ export default function HomePage() {
                   Deposit via MiniPay
                 </a>
               ) : (
-                <a
-                  href="https://minipay.opera.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="primary-action"
-                  style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
-                >
-                  Get MiniPay to deposit
-                </a>
+                <span style={{ marginTop: "10px", fontSize: "13px", color: "var(--ink-55)" }}>
+                  Transfer USDC or USDT to your wallet on the Celo network.
+                </span>
               )}
             </div>
           ) : null}
