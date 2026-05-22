@@ -197,12 +197,21 @@ async function downloadStatement(content: string, address: string) {
     doc.text(`Page ${i} of ${totalPages}`, pageW - margin, ph - 7, { align: "right" });
   }
 
-  // Use blob output + anchor click — works in all browsers including MiniPay's WebView
   const blob = doc.output("blob");
+  const filename = `akili-statement-${address.slice(0, 6)}-${date}.pdf`;
+  const file = new File([blob], filename, { type: "application/pdf" });
+
+  // Web Share API — triggers native share/save sheet on iOS and Android WebViews
+  if (navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: "Akili Wallet Statement" });
+    return;
+  }
+
+  // Desktop fallback
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `akili-statement-${address.slice(0, 6)}-${date}.pdf`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

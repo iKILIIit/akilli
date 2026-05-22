@@ -293,7 +293,7 @@ export default function BudgetPage() {
     return Array.from(set).sort();
   }, [txList]);
 
-  function downloadCSV() {
+  async function downloadCSV() {
     const header = "Date,Type,Category,Token,Amount,Counterparty,Note";
     const rows = txList.map(tx => [
       new Date(tx.timestamp * 1000).toISOString().slice(0, 10),
@@ -304,13 +304,26 @@ export default function BudgetPage() {
       `"${resolveLabel(tx.counterpartyLabel, contactMap).replace(/"/g, '""')}"`,
       `"${(allNotes[tx.hash] ?? "").replace(/"/g, '""')}"`,
     ].join(","));
-    const blob = new Blob([header + "\n" + rows.join("\n")], { type: "text/csv" });
+    const csvContent = header + "\n" + rows.join("\n");
+    const filename = `akili-${walletAddress!.slice(0, 6)}-${new Date().toISOString().slice(0, 10)}.csv`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const file = new File([blob], filename, { type: "text/csv" });
+
+    // Web Share API — triggers native share/save sheet on iOS and Android WebViews
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: "Akili Transactions" });
+      return;
+    }
+
+    // Desktop fallback
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `akili-${walletAddress!.slice(0, 6)}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   const savingsGoalRules = useMemo(
