@@ -387,6 +387,7 @@ function CopilotInner() {
   const autoTriggered = useRef(false);
 
   const [tab, setTab] = useState<"chat" | "insights">(tabParam === "insights" ? "insights" : "chat");
+  const [showIntro, setShowIntro] = useState(false);
   const [payingForId, setPayingForId] = useState<string | null>(null);
   const [freeAudits, setFreeAudits] = useState(FREE_LIMIT);
   const [freeChat, setFreeChat] = useState(FREE_LIMIT);
@@ -409,6 +410,11 @@ function CopilotInner() {
   useEffect(() => {
     setFreeAudits(getFreeAuditsRemaining());
     setFreeChat(getFreeChatRemaining());
+    try {
+      if (!localStorage.getItem("akili_copilot_intro_seen")) {
+        setShowIntro(true);
+      }
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -541,6 +547,11 @@ function CopilotInner() {
     );
   }
 
+  function dismissIntro() {
+    try { localStorage.setItem("akili_copilot_intro_seen", "1"); } catch { /* ignore */ }
+    setShowIntro(false);
+  }
+
   return (
     <div style={{
       display: "flex",
@@ -551,6 +562,64 @@ function CopilotInner() {
       margin: "0 auto",
       fontFamily: "var(--font-sans)"
     }}>
+
+      {/* One-time intro modal */}
+      {showIntro && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 300,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+          background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)"
+        }}>
+          <div style={{
+            background: "var(--surface)", borderRadius: "26px 26px 0 0",
+            padding: "28px 24px calc(28px + env(safe-area-inset-bottom))",
+            width: "min(100%, 390px)", display: "flex", flexDirection: "column", gap: "16px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{
+                width: "40px", height: "40px", borderRadius: "14px",
+                background: "var(--slab)", color: "var(--slab-ink)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: "18px", flexShrink: 0
+              }}>A</span>
+              <div>
+                <strong style={{ fontSize: "16px", display: "block" }}>Meet Akili Agent</strong>
+                <span style={{ fontSize: "12px", color: "var(--ink-55)" }}>AI-powered wallet analysis</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                { icon: "✦", label: "3 free analyses", detail: "Spending advice, wallet audit, monthly plan, statement & more" },
+                { icon: "✦", label: "3 free chat messages", detail: "Ask anything about your wallet in plain language" },
+                { icon: "✦", label: `${AI_PRICE_DISPLAY} USDC per use after`, detail: "Paid instantly via your connected wallet — no sign-up" },
+              ].map(item => (
+                <div key={item.label} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                  <span style={{ color: "var(--green)", fontWeight: 700, fontSize: "14px", marginTop: "1px", flexShrink: 0 }}>{item.icon}</span>
+                  <div>
+                    <strong style={{ fontSize: "13px", display: "block" }}>{item.label}</strong>
+                    <span style={{ fontSize: "12px", color: "var(--ink-55)" }}>{item.detail}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={dismissIntro}
+              style={{
+                marginTop: "4px", width: "100%", padding: "14px",
+                borderRadius: "999px", border: "none",
+                background: "var(--slab)", color: "var(--slab-ink)",
+                fontSize: "15px", fontWeight: 700, cursor: "pointer"
+              }}
+            >
+              Got it — let&apos;s go
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{
         padding: "calc(14px + env(safe-area-inset-top)) 16px 0",
