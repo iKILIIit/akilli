@@ -326,6 +326,15 @@ export async function generateWalletReport(
   reportType: ReportType,
   linkupContext?: string
 ): Promise<WalletAnalysis> {
+  if (wallet.transactions.length === 0) {
+    return {
+      reportType,
+      narrative: "No transaction history found for this wallet. Once you send or receive USDC or USDT on Celo, Akili can generate a full report with spending advice, health scores, and more.",
+      keyFindings: ["No transactions found in the selected period."],
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   const walletContext = buildWalletContext(wallet, linkupContext);
   const prompt = PROMPTS[reportType](wallet);
   const userPrompt = `${prompt}\n\nWALLET DATA:\n${walletContext}`;
@@ -375,6 +384,10 @@ export async function chatWithWallet(
   messages: ChatMessage[],
   linkupContext?: string
 ): Promise<string> {
+  if (wallet.transactions.length === 0) {
+    return "I don't see any transactions on this wallet yet. Once you send or receive USDC or USDT on Celo, I'll be able to analyze your spending, generate reports, and give you personalized financial advice.";
+  }
+
   const walletContext = buildWalletContext(wallet, linkupContext);
 
   const systemPrompt = `${SYSTEM_BASE}

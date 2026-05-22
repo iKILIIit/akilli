@@ -41,6 +41,7 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: "Spending Advice", reportType: "spending-advice", prompt: "Give me personalized spending advice based on my wallet activity." },
   { label: "Account Summary", reportType: "account-summary", prompt: "Summarize my account activity for the last 90 days." },
   { label: "Wallet Audit", reportType: "wallet-audit", prompt: "Audit my wallet and give me a financial health score." },
+  { label: "Monthly Plan", reportType: "monthly-plan", prompt: "Build a realistic monthly budget and savings plan based on my transaction history." },
   { label: "Statement", reportType: "wallet-statement", prompt: "Generate a formal wallet statement of my transactions." },
 ];
 
