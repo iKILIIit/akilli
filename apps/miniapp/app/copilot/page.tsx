@@ -41,6 +41,15 @@ type InsightsData = {
   transactionCount: number;
 };
 
+const FOLLOW_UPS: Record<string, string[]> = {
+  "spending-advice":  ["What's my biggest expense?", "How can I save more?", "Compare my spending to last month"],
+  "wallet-audit":     ["What's my health score mean?", "How do I improve my score?", "Show my top payees"],
+  "account-summary":  ["Break down by category", "What were my biggest sends?", "Generate a statement"],
+  "monthly-plan":     ["How much should I save?", "What's my daily budget?", "Set a spending alert"],
+  "wallet-statement": ["Audit my wallet", "Give spending advice", "What's my balance trend?"],
+};
+const DEFAULT_FOLLOW_UPS = ["Tell me more", "Give me advice", "Summarize this"];
+
 const QUICK_ACTIONS: QuickAction[] = [
   { label: "Spending Advice", reportType: "spending-advice", prompt: "Give me personalized spending advice based on my wallet activity." },
   { label: "Account Summary", reportType: "account-summary", prompt: "Summarize my account activity for the last 90 days." },
@@ -672,6 +681,25 @@ function CopilotInner() {
                 }}>
                   {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
                 </div>
+
+                {/* Follow-up suggestions for the last assistant message */}
+                {msg.role === "assistant" && msg.id !== "welcome" && msg === messages.filter(m => m.role === "assistant").at(-1) && !chatLoading && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px", maxWidth: "85%" }}>
+                    {(FOLLOW_UPS[msg.reportType ?? ""] ?? DEFAULT_FOLLOW_UPS).map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => sendMessage(s)}
+                        style={{
+                          padding: "4px 10px", borderRadius: "999px", fontSize: "11px", cursor: "pointer",
+                          background: "var(--bg-soft)", border: "1px solid var(--line)", color: "var(--ink-70)"
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Share button for all assistant messages */}
                 {msg.role === "assistant" && msg.content.length > 40 && (
