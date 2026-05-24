@@ -189,8 +189,13 @@ export default function BudgetPage() {
 
   // Transaction list toggle + search
   const [showTxList, setShowTxList] = useState(false);
+  const [txSearchRaw, setTxSearchRaw] = useState("");
   const [txSearch, setTxSearch] = useState("");
   const [txTokenFilter, setTxTokenFilter] = useState<string>("all");
+  useEffect(() => {
+    const t = setTimeout(() => setTxSearch(txSearchRaw), 220);
+    return () => clearTimeout(t);
+  }, [txSearchRaw]);
 
   // Category limits
   const [categoryLimits, setCategoryLimitsState] = useState<CategoryLimits>({});
@@ -818,11 +823,11 @@ export default function BudgetPage() {
                 {showTxList && (
                   <>
                     {/* Search + token filter */}
-                    <div style={{ display: "flex", gap: "8px", marginBottom: (txSearch || txTokenFilter !== "all") ? "4px" : "10px" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: (txSearchRaw || txTokenFilter !== "all") ? "4px" : "10px" }}>
                       <input
                         type="text"
-                        value={txSearch}
-                        onChange={e => setTxSearch(e.target.value)}
+                        value={txSearchRaw}
+                        onChange={e => setTxSearchRaw(e.target.value)}
                         placeholder="Search contacts or notes…"
                         style={{
                           flex: 1, fontSize: "12px", padding: "8px 12px", borderRadius: "10px",
@@ -846,7 +851,7 @@ export default function BudgetPage() {
                       )}
                     </div>
 
-                    {(txSearch || txTokenFilter !== "all") && (
+                    {(txSearchRaw || txTokenFilter !== "all") && (
                       <div style={{ fontSize: "11px", color: "var(--ink-55)", marginBottom: "6px", paddingLeft: "2px" }}>
                         {filteredTxs.length} result{filteredTxs.length !== 1 ? "s" : ""} of {txList.length}
                       </div>
