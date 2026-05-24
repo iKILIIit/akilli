@@ -636,6 +636,9 @@ export default function BudgetPage() {
                 <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "16px" }}>
                   <div className="dashboard-section-head" style={{ marginBottom: "14px" }}>
                     <p className="section-label">By category</p>
+                    <span style={{ fontSize: "11px", color: "var(--ink-55)", fontFamily: "var(--font-mono)" }}>
+                      ${Object.values(byCategory).reduce((s, v) => s + v, 0).toFixed(2)} total
+                    </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     {Object.entries(byCategory)
