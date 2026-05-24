@@ -313,7 +313,7 @@ export default function HomePage() {
 
           <div className="dashboard-section-head">
             <p className="section-label">Stable balances</p>
-            <span>{pullRefreshing || balancesLoading ? "Refreshing…" : miniPay.walletAddress ? "Live" : walletSummary}</span>
+            <span>{pullRefreshing || balancesLoading ? "Refreshing…" : miniPay.walletAddress ? `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : walletSummary}</span>
           </div>
 
           <div className="wallet-token-grid">
