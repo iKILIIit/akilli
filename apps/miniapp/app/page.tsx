@@ -427,7 +427,11 @@ export default function HomePage() {
           </div>
         </section>
 
-        <footer style={{ padding: "12px 16px 4px", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
+        <footer style={{ padding: "4px 16px 4px", textAlign: "center" }}>
+          <span style={{ fontSize: "11px", color: "var(--ink-40)" }}>Built on Celo · Powered by Akili AI</span>
+        </footer>
+
+        <footer style={{ padding: "8px 16px 4px", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
           {[
             { label: "Terms", href: "/legal/terms" },
             { label: "Privacy", href: "/legal/privacy" },
