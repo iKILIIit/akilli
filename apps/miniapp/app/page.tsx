@@ -169,6 +169,11 @@ export default function HomePage() {
     [balances]
   );
 
+  const totalPortfolioUSD = useMemo(
+    () => positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0),
+    [positiveBalances]
+  );
+
   useEffect(() => {
     if (miniPay.isLoading || miniPay.walletAddress || !miniPay.isMiniPayProvider || hasTriedAutoConnect) return;
     setHasTriedAutoConnect(true);
@@ -199,7 +204,7 @@ export default function HomePage() {
     <main className="page-shell dashboard-enter">
       <SpendingAlertModal
         walletAddress={miniPay.walletAddress}
-        totalBalance={positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0)}
+        totalBalance={totalPortfolioUSD}
       />
 
       <WalletConnectModal
@@ -266,10 +271,9 @@ export default function HomePage() {
                       ? "0 stable balance"
                       : "••••"}
                 </div>
-                {positiveBalances.length > 1 && (() => {
-                  const total = positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0);
-                  return <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>Portfolio: ${total.toFixed(2)}</div>;
-                })()}
+                {positiveBalances.length > 1 && (
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>Portfolio: ${totalPortfolioUSD.toFixed(2)}</div>
+                )}
               </div>
               <div style={{ color: "var(--slab-ink-70)", marginTop: "6px", flexShrink: 0 }}>
                 <EyeOffIcon />
@@ -279,10 +283,9 @@ export default function HomePage() {
             {/* Local currency + currency selector on one row */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               {miniPay.walletAddress && fxRates && localCurrency !== "USD" && (() => {
-                const total = positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0);
-                return total > 0 ? (
+                return totalPortfolioUSD > 0 ? (
                   <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", fontFamily: "var(--font-mono)" }}>
-                    ≈ {formatLocal(convertUSD(total, localCurrency, fxRates), localCurrency)}
+                    ≈ {formatLocal(convertUSD(totalPortfolioUSD, localCurrency, fxRates), localCurrency)}
                   </span>
                 ) : null;
               })()}
