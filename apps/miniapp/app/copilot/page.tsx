@@ -638,15 +638,22 @@ function CopilotInner() {
       {/* ── Chat tab ── */}
       {tab === "chat" && (
         <div className="tab-panel-enter" style={{ display: "contents" }}>
-          <div style={{ padding: "6px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-            <span style={{ fontSize: "11px", color: "var(--ink-55)" }}>
-              {freeAudits > 0
-                ? `${freeAudits} free ${freeAudits === 1 ? "analysis" : "analyses"} left`
-                : `${AI_PRICE_DISPLAY} per analysis`}
-              {" · "}
-              {freeChat > 0
-                ? `${freeChat} free ${freeChat === 1 ? "chat" : "chats"} left`
-                : `${AI_PRICE_DISPLAY} per chat`}
+          <div style={{ padding: "6px 16px 0", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+            <span style={{
+              fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "999px",
+              background: freeAudits > 0 ? "var(--green-soft)" : "var(--bg-soft)",
+              color: freeAudits > 0 ? "var(--green-ink)" : "var(--ink-55)",
+              border: `1px solid ${freeAudits > 0 ? "var(--green)" : "var(--line)"}`,
+            }}>
+              {freeAudits > 0 ? `${freeAudits} analyses` : `${AI_PRICE_DISPLAY}/analysis`}
+            </span>
+            <span style={{
+              fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "999px",
+              background: freeChat > 0 ? "var(--green-soft)" : "var(--bg-soft)",
+              color: freeChat > 0 ? "var(--green-ink)" : "var(--ink-55)",
+              border: `1px solid ${freeChat > 0 ? "var(--green)" : "var(--line)"}`,
+            }}>
+              {freeChat > 0 ? `${freeChat} chats` : `${AI_PRICE_DISPLAY}/chat`}
             </span>
           </div>
           <div className="brief-chip-row" style={{ padding: "6px 16px 10px", overflowX: "auto", flexWrap: "nowrap", borderBottom: "1px solid var(--line)", flexShrink: 0 }}>
