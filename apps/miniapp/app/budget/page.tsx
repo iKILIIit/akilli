@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "../../components/bottom-nav";
 import { useMiniPay } from "../../hooks/use-minipay";
@@ -162,6 +163,7 @@ function BudgetBar({ label, emoji, color, actual, limit, localAmt, onSetLimit, o
 }
 
 export default function BudgetPage() {
+  const router = useRouter();
   const { walletAddress } = useMiniPay();
   const { balances } = useStableTokenBalances(walletAddress);
   const [period, setPeriod] = useState<AlertPeriod>("monthly");
@@ -448,9 +450,13 @@ export default function BudgetPage() {
               )}
             </div>
 
-            <Link href="/alerts" style={{ fontSize: "11px", color: "var(--ink-55)", textDecoration: "none", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: "8px" }}>
+            <button
+              type="button"
+              onClick={() => router.push("/alerts")}
+              style={{ fontSize: "11px", color: "var(--ink-55)", background: "transparent", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: "8px", cursor: "pointer" }}
+            >
               Set Alerts
-            </Link>
+            </button>
           </div>
 
           {/* Period selector */}
@@ -838,17 +844,18 @@ export default function BudgetPage() {
                 </div>
               )}
 
-              <Link
-                href="/alerts"
+              <button
+                type="button"
+                onClick={() => router.push("/alerts")}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                  padding: "14px", borderRadius: "16px",
-                  background: "var(--ink)", color: "#fffdf7",
-                  textDecoration: "none", fontSize: "14px", fontWeight: 600
+                  padding: "14px", borderRadius: "16px", width: "100%",
+                  background: "var(--ink)", color: "#fffdf7", border: "none",
+                  fontSize: "14px", fontWeight: 600, cursor: "pointer"
                 }}
               >
                 ⚡ Set Spending Alerts
-              </Link>
+              </button>
             </>
           )}
         </div>
