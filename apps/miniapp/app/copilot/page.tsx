@@ -683,6 +683,9 @@ function CopilotInner() {
             ))}
           </div>
 
+          <div aria-live="polite" aria-atomic="false" className="sr-only" style={{ position: "absolute", left: "-9999px" }}>
+            {chatLoading ? "Akili is thinking…" : messages.at(-1)?.role === "assistant" ? "Response received" : ""}
+          </div>
           <div style={{ flex: 1, overflowY: "auto", padding: "16px", paddingBottom: "160px", display: "flex", flexDirection: "column", gap: "12px" }}>
             {messages.map(msg => (
               <div key={msg.id} className="message-enter" style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
