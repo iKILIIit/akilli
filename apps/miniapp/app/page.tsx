@@ -375,7 +375,7 @@ export default function HomePage() {
               </div>
               <div className="dashboard-action-card__title">Spending Advice</div>
               <div className="dashboard-pin__meta">
-                {canAnalyze ? "Personalized tips from your activity." : "Connect wallet first."}
+                {canAnalyze ? "Where your money goes · how to save more." : "Connect wallet first."}
               </div>
             </Link>
 
@@ -387,7 +387,7 @@ export default function HomePage() {
                 <AuditIcon />
               </div>
               <div className="dashboard-action-card__title">Wallet Audit</div>
-              <div className="dashboard-pin__meta">Health score and risk check.</div>
+              <div className="dashboard-pin__meta">Financial health score · risk check.</div>
             </Link>
 
           </div>
