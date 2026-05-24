@@ -192,6 +192,38 @@ export default function AlertsPage() {
             </div>
           )}
 
+          {/* Quick presets */}
+          {!showForm && (
+            <div>
+              <div style={{ fontSize: "11px", color: "var(--ink-55)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Quick presets</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {[
+                  { label: "$50/week cap", type: "spending_cap" as const, period: "weekly" as const, amount: 50 },
+                  { label: "$200/month cap", type: "spending_cap" as const, period: "monthly" as const, amount: 200 },
+                  { label: "$500 savings goal", type: "savings_goal" as const, period: undefined, amount: 500 },
+                  { label: "$10 yield goal", type: "yield_goal" as const, period: undefined, amount: 10 },
+                ].map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      addRule({ type: preset.type, period: preset.period, amount: preset.amount, label: preset.label, enabled: true });
+                      refresh();
+                      setSaved(true);
+                      setTimeout(() => setSaved(false), 2000);
+                    }}
+                    style={{
+                      padding: "6px 12px", borderRadius: "999px", fontSize: "11px", fontWeight: 500, cursor: "pointer",
+                      background: "var(--bg-soft)", border: "1px solid var(--line)", color: "var(--ink-70)"
+                    }}
+                  >
+                    + {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Add rule */}
           {!showForm ? (
             <button
