@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BottomNav } from "../../components/bottom-nav";
+import { toast } from "../../components/toast";
 import { useMiniPay } from "../../hooks/use-minipay";
 import { useStableTokenBalances } from "../../hooks/use-stable-token-balances";
 import {
@@ -865,14 +866,24 @@ export default function BudgetPage() {
                               <button type="button" onClick={() => { setEditingNote(null); setNoteText(""); }} style={{ padding: "5px 8px", borderRadius: "8px", background: "transparent", border: "1px solid var(--line)", fontSize: "11px", cursor: "pointer", color: "var(--ink-55)" }}>✕</button>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => { setEditingNote(tx.hash); setNoteText(note); }}
-                              style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", padding: 0, cursor: "pointer", color: note ? "var(--ink-55)" : "var(--ink-40)", fontSize: "11px" }}
-                            >
-                              <NoteIcon />
-                              {note || "Add note"}
-                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
+                              <button
+                                type="button"
+                                onClick={() => { setEditingNote(tx.hash); setNoteText(note); }}
+                                style={{ display: "flex", alignItems: "center", gap: "4px", background: "none", border: "none", padding: 0, cursor: "pointer", color: note ? "var(--ink-55)" : "var(--ink-40)", fontSize: "11px", flex: 1 }}
+                              >
+                                <NoteIcon />
+                                {note || "Add note"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void navigator.clipboard.writeText(tx.hash).then(() => toast.success("Hash copied"))}
+                                style={{ background: "none", border: "none", padding: "2px 4px", cursor: "pointer", color: "var(--ink-40)", fontSize: "10px", flexShrink: 0 }}
+                                title="Copy tx hash"
+                              >
+                                #
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
