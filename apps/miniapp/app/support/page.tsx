@@ -27,8 +27,8 @@ export default function SupportPage() {
         <div className="screen-section__head">Or</div>
         <div className="support-links-card">
           {[
-            { title: "Open the FAQ", detail: "Common questions about yield, risk, fees.", href: "/legal/terms" },
-            { title: "Status page", detail: "See live system status.", href: `/alerts?${defaultParams}` },
+            { title: "Open the FAQ", detail: "Common questions about yield, risk, fees.", href: "/legal/privacy" },
+            { title: "View alerts", detail: "Check and manage your spending alerts.", href: "/alerts" },
             { title: "Report a bug", detail: "Send us a quick note with logs.", href: `mailto:${SUPPORT_EMAIL}?subject=Akili%20Bug%20Report` },
           ].map((item, index, arr) => (
             <Link key={item.title} href={item.href} className={index < arr.length - 1 ? "support-links-card__row" : "support-links-card__row support-links-card__row--last"}>
