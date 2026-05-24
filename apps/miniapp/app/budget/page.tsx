@@ -515,6 +515,14 @@ export default function BudgetPage() {
                 </div>
               </div>
 
+              {/* Gas fees callout */}
+              {wallet && wallet.totalGasFeesUSD > 0 && (
+                <div style={{ background: "var(--bg-soft)", border: "1px solid var(--line)", borderRadius: "14px", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", color: "var(--ink-55)" }}>⛽ Network fees paid</span>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>${wallet.totalGasFeesUSD.toFixed(4)}</span>
+                </div>
+              )}
+
               {/* Net position */}
               <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
