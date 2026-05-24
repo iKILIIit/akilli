@@ -1024,7 +1024,7 @@ function CopilotInner() {
                   <div className="dashboard-section-head" style={{ marginBottom: "10px" }}>
                     <p className="section-label">Spending breakdown</p>
                     <span style={{ fontSize: "0.72rem", color: "var(--ink-55)", fontFamily: "var(--font-mono)" }}>
-                      ${insights.spendingBreakdown.dailyAvgSpend.toFixed(2)}/day avg
+                      ${insights.spendingBreakdown.dailyAvgSpend.toFixed(2)}/day · peak: {insights.spendingBreakdown.mostActiveDay}
                     </span>
                   </div>
                   <div style={{
