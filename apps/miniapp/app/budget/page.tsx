@@ -529,7 +529,10 @@ export default function BudgetPage() {
                   {toLocal(totalSpent) && (
                     <div style={{ fontSize: "11px", color: "var(--ink-40)", fontFamily: "var(--font-mono)" }}>≈ {toLocal(totalSpent)}</div>
                   )}
-                  <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "2px" }}>{periodTxs.filter(t => t.type === "sent" || t.type === "contract").length} txns</div>
+                  <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "2px" }}>
+                    {periodTxs.filter(t => t.type === "sent" || t.type === "contract").length} txns
+                    {totalReceived > 0 && <span style={{ marginLeft: "4px" }}>· {Math.round((totalSpent / totalReceived) * 100)}% of income</span>}
+                  </div>
                 </div>
                 <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "14px" }}>
                   <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>Received</div>
