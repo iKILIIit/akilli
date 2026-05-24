@@ -297,6 +297,16 @@ export default function BudgetPage() {
     });
   }, [txList, txSearch, txTokenFilter, contactMap, allNotes]);
 
+  const byDayOfWeek = useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const totals = Array(7).fill(0) as number[];
+    for (const tx of periodTxs) {
+      if (tx.type !== "sent" && tx.type !== "contract") continue;
+      totals[new Date(tx.timestamp * 1000).getDay()]! += parseFloat(tx.amount);
+    }
+    return days.map((label, i) => ({ label, amount: totals[i]! }));
+  }, [periodTxs]);
+
   const availableTokens = useMemo(() => {
     const set = new Set(txList.map(t => t.token));
     return Array.from(set).sort();
@@ -751,6 +761,29 @@ export default function BudgetPage() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Day-of-week breakdown */}
+              {byDayOfWeek.some(d => d.amount > 0) && (
+                <div>
+                  <div className="dashboard-section-head" style={{ marginBottom: "10px" }}>
+                    <p className="section-label">📅 Spend by day</p>
+                  </div>
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "14px 16px" }}>
+                    <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "48px" }}>
+                      {byDayOfWeek.map(d => {
+                        const max = Math.max(...byDayOfWeek.map(x => x.amount), 0.01);
+                        const pct = (d.amount / max) * 100;
+                        return (
+                          <div key={d.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                            <div style={{ width: "100%", height: `${Math.max(pct, 4)}%`, background: pct > 0 ? "var(--coral)" : "var(--line)", borderRadius: "3px", minHeight: "3px", transition: "height 0.4s ease" }} />
+                            <span style={{ fontSize: "9px", color: "var(--ink-40)" }}>{d.label[0]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
