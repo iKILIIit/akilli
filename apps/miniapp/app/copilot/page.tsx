@@ -827,7 +827,10 @@ function CopilotInner() {
                     boxShadow: "var(--shadow)", borderRadius: "18px 18px 18px 4px",
                     padding: "12px 16px", fontSize: "13px", lineHeight: 1.5
                   }}>
-                    <strong style={{ display: "block", marginBottom: "4px" }}>Free limit reached</strong>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+                      <strong>Free limit reached</strong>
+                      <button type="button" onClick={() => setPaywallPending(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-40)", fontSize: "14px", padding: "0 0 0 8px", lineHeight: 1 }}>✕</button>
+                    </div>
                     You&apos;ve used your {FREE_LIMIT} free {paywallPending.reportType ? "analyses" : "chat messages"}.
                     Pay {AI_PRICE_DISPLAY} USDC to continue.
                   </div>
