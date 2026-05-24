@@ -3,9 +3,6 @@ import { SUPPORT_EMAIL } from "@yield-copilot/shared";
 import { BackButton, HeaderBar, ScreenFrame } from "../../components/screen-frame";
 
 export default function SupportPage() {
-  const defaultParams =
-    "goal=earn-more&token=USDC&amount=2400&timeHorizonDays=30&riskComfort=low";
-
   return (
     <ScreenFrame>
       <HeaderBar left={<BackButton href="/" />} title="Support" />
