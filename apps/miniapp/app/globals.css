@@ -89,6 +89,16 @@ button {
   cursor: pointer;
 }
 
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .page-shell {
   width: min(100%, 390px);
   min-height: 100vh;
