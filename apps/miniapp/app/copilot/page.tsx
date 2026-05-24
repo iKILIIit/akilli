@@ -850,6 +850,11 @@ function CopilotInner() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Privacy note */}
+          <div style={{ textAlign: "center", fontSize: "10px", color: "var(--ink-40)", padding: "0 16px 2px", flexShrink: 0 }}>
+            🔒 Your private key never leaves your device
+          </div>
+
           {/* Input bar */}
           <div style={{
             position: "fixed",
