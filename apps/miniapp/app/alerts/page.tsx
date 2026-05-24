@@ -119,6 +119,14 @@ export default function AlertsPage() {
               <div style={{ color: "var(--ink)", fontSize: "15px", fontWeight: 600, letterSpacing: "-0.02em" }}>Spending Alerts</div>
               <div style={{ color: "var(--ink-55)", fontSize: "11px" }}>You'll see a pop-up when rules trigger</div>
             </div>
+            {rules.length > 0 && (
+              <span style={{
+                fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "999px",
+                background: "var(--green-soft)", color: "var(--green-ink)", border: "1px solid var(--green)"
+              }}>
+                {rules.filter(r => r.enabled).length}/{rules.length} active
+              </span>
+            )}
             {saved && <span style={{ fontSize: "11px", color: "var(--green-ink)", fontWeight: 600 }}>Saved ✓</span>}
           </div>
         </div>
