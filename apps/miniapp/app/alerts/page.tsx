@@ -53,6 +53,7 @@ function ruleEmoji(type: RuleType): string {
 
 export default function AlertsPage() {
   const [rules, setRules] = useState<AlertRule[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<RuleType>("spending_cap");
   const [formPeriod, setFormPeriod] = useState<AlertPeriod>("monthly");
@@ -178,14 +179,21 @@ export default function AlertsPage() {
                         boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
                       }} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(rule.id)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-40)", padding: "4px", flexShrink: 0 }}
-                      aria-label="Delete rule"
-                    >
-                      <TrashIcon />
-                    </button>
+                    {confirmDelete === rule.id ? (
+                      <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                        <button type="button" onClick={() => { handleRemove(rule.id); setConfirmDelete(null); }} style={{ padding: "4px 8px", borderRadius: "8px", background: "var(--coral)", color: "#fff", border: "none", fontSize: "10px", fontWeight: 600, cursor: "pointer" }}>Delete</button>
+                        <button type="button" onClick={() => setConfirmDelete(null)} style={{ padding: "4px 8px", borderRadius: "8px", background: "transparent", border: "1px solid var(--line)", fontSize: "10px", cursor: "pointer", color: "var(--ink-55)" }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(rule.id)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-40)", padding: "4px", flexShrink: 0 }}
+                        aria-label="Delete rule"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
