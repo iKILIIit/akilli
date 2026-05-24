@@ -782,8 +782,11 @@ function CopilotInner() {
                   </button>
                 )}
 
-                <div style={{ color: "var(--ink-40)", fontSize: "10px", marginTop: "4px", padding: "0 4px" }}>
-                  {formatTime(msg.timestamp)}
+                <div style={{ color: "var(--ink-40)", fontSize: "10px", marginTop: "4px", padding: "0 4px", display: "flex", gap: "6px" }}>
+                  <span>{formatTime(msg.timestamp)}</span>
+                  {msg.role === "assistant" && msg.content.length > 200 && (
+                    <span>· {Math.ceil(msg.content.split(/\s+/).length / 200)} min read</span>
+                  )}
                 </div>
               </div>
             ))}
