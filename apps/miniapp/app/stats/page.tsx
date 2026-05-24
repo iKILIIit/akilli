@@ -81,7 +81,7 @@ export default function StatsPage() {
         <StatRow label="Celo RPC" value="forno.celo.org" note="Balance lookups" />
         <StatRow label="Celoscan API" value="api.celoscan.io" note="Transaction history" />
         <StatRow label="Linkup API" value="api.linkup.so" note="Contract + token research" />
-        <StatRow label="OpenAI API" value="api.openai.com" note="AI responses (server-side only)" />
+        <StatRow label="OpenRouter API" value="openrouter.ai" note="AI responses via DeepSeek (server-side only)" />
         <div className="list-card__row list-card__row--last">
           <div style={{ flex: 1 }}>
             <strong style={{ fontSize: "0.82rem" }}>Fonts / assets</strong>
