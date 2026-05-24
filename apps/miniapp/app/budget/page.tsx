@@ -236,6 +236,12 @@ export default function BudgetPage() {
     [periodTxs]
   );
 
+  const biggestSpend = useMemo(() => {
+    const sends = periodTxs.filter(t => t.type === "sent" || t.type === "contract");
+    if (!sends.length) return null;
+    return sends.reduce((max, t) => parseFloat(t.amount) > parseFloat(max.amount) ? t : max, sends[0]!);
+  }, [periodTxs]);
+
   const byCategory = useMemo(() => {
     const map: Record<string, number> = {};
     for (const tx of periodTxs) {
@@ -520,6 +526,21 @@ export default function BudgetPage() {
                 <div style={{ background: "var(--bg-soft)", border: "1px solid var(--line)", borderRadius: "14px", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "12px", color: "var(--ink-55)" }}>⛽ Network fees paid</span>
                   <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--ink-70)", fontFamily: "var(--font-mono)" }}>${wallet.totalGasFeesUSD.toFixed(4)}</span>
+                </div>
+              )}
+
+              {/* Biggest spend */}
+              {biggestSpend && (
+                <div style={{ background: "var(--bg-soft)", border: "1px solid var(--line)", borderRadius: "14px", padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontSize: "11px", color: "var(--ink-55)" }}>🏆 Biggest send</span>
+                    <div style={{ fontSize: "11px", color: "var(--ink-40)", marginTop: "1px" }}>
+                      {resolveLabel(biggestSpend.counterpartyLabel, contactMap)}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--coral-ink)", fontFamily: "var(--font-mono)" }}>
+                    ${parseFloat(biggestSpend.amount).toFixed(2)}
+                  </span>
                 </div>
               )}
 
