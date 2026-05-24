@@ -746,7 +746,7 @@ export default function BudgetPage() {
                 {showTxList && (
                   <>
                     {/* Search + token filter */}
-                    <div style={{ display: "flex", gap: "8px", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: (txSearch || txTokenFilter !== "all") ? "4px" : "10px" }}>
                       <input
                         type="text"
                         value={txSearch}
@@ -773,6 +773,12 @@ export default function BudgetPage() {
                         </select>
                       )}
                     </div>
+
+                    {(txSearch || txTokenFilter !== "all") && (
+                      <div style={{ fontSize: "11px", color: "var(--ink-55)", marginBottom: "6px", paddingLeft: "2px" }}>
+                        {filteredTxs.length} result{filteredTxs.length !== 1 ? "s" : ""} of {txList.length}
+                      </div>
+                    )}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     {filteredTxs.length === 0 ? (
