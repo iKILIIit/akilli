@@ -23,11 +23,11 @@ function LegalSection({
 export default function PrivacyPage() {
   return (
     <ScreenFrame>
-      <HeaderBar left={<BackButton href="/" />} title="Privacy" subtle="v1.4" />
+      <HeaderBar left={<BackButton href="/" />} title="Privacy" subtle="v1.5" />
 
       <section className="screen-copy-block screen-copy-block--no-step screen-copy-block--legal">
         <h1 className="screen-copy-block__title">Privacy</h1>
-        <p className="screen-copy-block__body">Last updated · May 4, 2026</p>
+        <p className="screen-copy-block__body">Last updated · May 24, 2026</p>
       </section>
 
       <div className="legal-stack">
