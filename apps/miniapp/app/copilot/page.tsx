@@ -1100,9 +1100,19 @@ function CopilotInner() {
                 </div>
               </div>
 
-              <button type="button" onClick={() => void loadInsights()} className="secondary-action">
-                Refresh analysis
-              </button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button type="button" onClick={() => void loadInsights()} className="secondary-action" style={{ flex: 1 }}>
+                  Refresh analysis
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTab("chat"); sendMessage("Give me a summary of my financial health based on the insights.", "account-summary"); }}
+                  className="secondary-action"
+                  style={{ flex: 1 }}
+                >
+                  Ask Akili →
+                </button>
+              </div>
             </div>
           )}
 
