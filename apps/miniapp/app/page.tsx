@@ -231,12 +231,18 @@ export default function HomePage() {
 
             {/* Balance + eye icon on one row */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div className="dashboard-balance-card__amount">
-                {selectedBalance?.hasBalance
-                  ? `${selectedBalance.displayAmount} ${selectedBalance.symbol}`
-                  : miniPay.walletAddress
-                    ? "0 stable balance"
-                    : "••••"}
+              <div>
+                <div className="dashboard-balance-card__amount">
+                  {selectedBalance?.hasBalance
+                    ? `${selectedBalance.displayAmount} ${selectedBalance.symbol}`
+                    : miniPay.walletAddress
+                      ? "0 stable balance"
+                      : "••••"}
+                </div>
+                {positiveBalances.length > 1 && (() => {
+                  const total = positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0);
+                  return <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>Portfolio: ${total.toFixed(2)}</div>;
+                })()}
               </div>
               <div style={{ color: "var(--slab-ink-70)", marginTop: "6px", flexShrink: 0 }}>
                 <EyeOffIcon />
