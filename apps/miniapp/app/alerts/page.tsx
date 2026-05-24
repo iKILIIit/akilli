@@ -112,7 +112,7 @@ export default function AlertsPage() {
           borderBottom: "1px solid var(--line)"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Link href="/" className="dashboard-topbar__icon" aria-label="Back">
+            <Link href="/budget" className="dashboard-topbar__icon" aria-label="Back to budget">
               <BackIcon />
             </Link>
             <div style={{ flex: 1 }}>
