@@ -596,6 +596,18 @@ function CopilotInner() {
               {address.slice(0, 6)}…{address.slice(-4)}
             </div>
           </div>
+          {tab === "chat" && messages.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setMessages([{ id: "welcome", role: "assistant", content: "Hi! I'm Akili, your AI financial assistant. I can analyze your wallet, give spending advice, audit your activity, or generate a formal statement. What would you like to know?", timestamp: new Date() }]);
+                setPaywallPending(null);
+              }}
+              style={{ fontSize: "11px", color: "var(--ink-55)", background: "transparent", padding: "4px 8px", border: "1px solid var(--line)", borderRadius: "8px", cursor: "pointer" }}
+            >
+              Clear
+            </button>
+          )}
         </div>
 
         <div className="segmented-row" role="tablist" aria-label="Akili sections" style={{ margin: "0 0 12px" }}>
