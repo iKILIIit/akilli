@@ -27,6 +27,7 @@ export default function SupportPage() {
             { title: "Open the FAQ", detail: "Common questions about yield, risk, fees.", href: "/legal/privacy" },
             { title: "View alerts", detail: "Check and manage your spending alerts.", href: "/alerts" },
             { title: "Report a bug", detail: "Send us a quick note with logs.", href: `mailto:${SUPPORT_EMAIL}?subject=Akili%20Bug%20Report` },
+            { title: "Wallet Audit Trail", detail: "Trace any Celo wallet's transaction history.", href: "/audit" },
           ].map((item, index, arr) => (
             <Link key={item.title} href={item.href} className={index < arr.length - 1 ? "support-links-card__row" : "support-links-card__row support-links-card__row--last"}>
               <div>
