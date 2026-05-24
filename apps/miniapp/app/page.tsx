@@ -222,7 +222,11 @@ export default function HomePage() {
                 className="dashboard-hero-home__status"
                 onClick={miniPay.walletAddress ? copyAddress : undefined}
                 style={{ cursor: miniPay.walletAddress ? "pointer" : "default" }}
-                title={miniPay.walletAddress ? truncateWalletAddress(miniPay.walletAddress) : undefined}
+                title={miniPay.walletAddress ?? undefined}
+                role={miniPay.walletAddress ? "button" : undefined}
+                aria-label={miniPay.walletAddress ? `Copy wallet address: ${truncateWalletAddress(miniPay.walletAddress)}` : undefined}
+                tabIndex={miniPay.walletAddress ? 0 : undefined}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") copyAddress(); }}
               >
                 <span className="dashboard-hero-home__dot" />
                 <span>{addressCopied ? "Copied!" : walletSummary}</span>
