@@ -10,6 +10,11 @@ export const AI_PRICE_DISPLAY = "$0.002";
 
 const AUDITS_KEY = "akili_audits_used";
 const CHAT_KEY = "akili_chat_used";
+const TRAIL_KEY = "akili_trail_used";
+
+export const TRAIL_FREE_LIMIT = 1;
+export const TRAIL_PRICE_USDC = parseUnits("0.01", 6);
+export const TRAIL_PRICE_DISPLAY = "$0.01";
 
 const TRANSFER_ABI = [
   {
@@ -52,6 +57,20 @@ export function recordChatUsed(): void {
   try { localStorage.setItem(CHAT_KEY, String(getChatUsed() + 1)); } catch {}
 }
 
+// ── Audit Trail counter ───────────────────────────────────────────────────────
+
+export function getTrailUsed(): number {
+  try { return Number(localStorage.getItem(TRAIL_KEY) ?? "0"); } catch { return 0; }
+}
+
+export function getFreeTrailRemaining(): number {
+  return Math.max(0, TRAIL_FREE_LIMIT - getTrailUsed());
+}
+
+export function recordTrailUsed(): void {
+  try { localStorage.setItem(TRAIL_KEY, String(getTrailUsed() + 1)); } catch {}
+}
+
 // ── Payment ───────────────────────────────────────────────────────────────────
 
 type EthProvider = {
@@ -72,6 +91,35 @@ export async function payForAI(): Promise<string> {
     abi: TRANSFER_ABI,
     functionName: "transfer",
     args: [recipient, AI_PRICE_USDC],
+  });
+
+  const txHash = await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [{
+      from: accounts[0],
+      to: USDC_ADDRESS,
+      data,
+      value: "0x0",
+    }],
+  }) as string;
+
+  return txHash;
+}
+
+export async function payForTrail(): Promise<string> {
+  const recipient = process.env.NEXT_PUBLIC_PAYMENT_RECIPIENT as `0x${string}` | undefined;
+  if (!recipient) throw new Error("Payment recipient not configured.");
+
+  const ethereum = (window as unknown as { ethereum?: EthProvider }).ethereum;
+  if (!ethereum?.request) throw new Error("No wallet found — please open in MiniPay.");
+
+  const accounts = await ethereum.request({ method: "eth_accounts" }) as string[];
+  if (!accounts?.[0]) throw new Error("Wallet not connected.");
+
+  const data = encodeFunctionData({
+    abi: TRANSFER_ABI,
+    functionName: "transfer",
+    args: [recipient, TRAIL_PRICE_USDC],
   });
 
   const txHash = await ethereum.request({
