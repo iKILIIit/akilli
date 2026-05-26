@@ -28,6 +28,7 @@ import {
 } from "../../lib/currency";
 import { getAllNotes, setNote } from "../../lib/notes";
 import { detectRecurring } from "../../lib/recurring";
+import { ReceiptModal, type ReceiptTx } from "../../components/receipt-modal";
 
 type Tx = {
   hash: string;
@@ -186,6 +187,9 @@ export default function BudgetPage() {
   const [allNotes, setAllNotes] = useState<Record<string, string>>({});
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
+
+  // Receipt modal
+  const [receiptTx, setReceiptTx] = useState<ReceiptTx | null>(null);
 
   // Transaction list toggle + search
   const [showTxList, setShowTxList] = useState(false);
@@ -937,6 +941,24 @@ export default function BudgetPage() {
                               >
                                 #
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setReceiptTx({
+                                  hash: tx.hash,
+                                  timestamp: tx.timestamp,
+                                  type: tx.type,
+                                  amount: tx.amount,
+                                  token: tx.token,
+                                  counterparty: tx.counterparty,
+                                  counterpartyLabel: tx.counterpartyLabel,
+                                  contactName: contactName,
+                                  note: allNotes[tx.hash] ?? "",
+                                })}
+                                style={{ background: "none", border: "none", padding: "2px 4px", cursor: "pointer", color: "var(--ink-40)", fontSize: "10px", flexShrink: 0 }}
+                                title="Get receipt"
+                              >
+                                🧾
+                              </button>
                             </div>
                           )}
                         </div>
@@ -979,6 +1001,16 @@ export default function BudgetPage() {
         `}</style>
       </div>
       <BottomNav />
+
+      {receiptTx && wallet && (
+        <ReceiptModal
+          tx={receiptTx}
+          walletAddress={walletAddress ?? ""}
+          localCurrency={localCurrency}
+          fxRates={fxRates}
+          onClose={() => setReceiptTx(null)}
+        />
+      )}
     </main>
   );
 }
