@@ -363,7 +363,7 @@ export default function HomePage() {
             ))}
           </div>
 
-          <Link href="/budget" style={{ textDecoration: "none" }}>
+          <Link href="/audit" style={{ textDecoration: "none" }}>
             <div style={{
               background: "var(--surface)", border: "1px solid var(--line)",
               borderRadius: "18px", padding: "14px 16px",
@@ -373,11 +373,11 @@ export default function HomePage() {
                 width: "40px", height: "40px", borderRadius: "14px", flexShrink: 0,
                 background: "var(--slab)", display: "flex", alignItems: "center",
                 justifyContent: "center", fontSize: "20px"
-              }}>🧾</div>
+              }}>🔍</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>Payment Receipts</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>Wallet Audit Trail</div>
                 <div style={{ fontSize: "11px", color: "var(--ink-55)", marginTop: "2px" }}>
-                  Tap any transaction on Spend Sheet to share a receipt
+                  Trace any Celo wallet — see where money came from and went
                 </div>
               </div>
               <span style={{ fontSize: "14px", color: "var(--ink-40)", flexShrink: 0 }}>→</span>
