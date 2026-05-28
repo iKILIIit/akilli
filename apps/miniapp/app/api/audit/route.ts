@@ -108,7 +108,7 @@ async function generateNarrative(wallet: Awaited<ReturnType<typeof fetchWalletDa
   const topSendersText = graph.topSenders.slice(0, 5).map(n => `${n.label} (sent $${n.totalIn.toFixed(2)}, ${n.txCount} tx)`).join(", ");
   const topReceiversText = graph.topReceivers.slice(0, 5).map(n => `${n.label} (received $${n.totalOut.toFixed(2)}, ${n.txCount} tx)`).join(", ");
 
-  const prompt = `You are a blockchain forensics analyst. Audit this Celo wallet and write a clear 3-paragraph investigation summary.
+  const prompt = `You are a blockchain forensics analyst. Audit this Celo wallet and write a structured investigation summary.
 
 Wallet: ${wallet.address}
 Period: last ${wallet.periodDays} days
@@ -118,9 +118,19 @@ Transaction count: ${graph.center.txCount}
 Top money sources (sent TO this wallet): ${topSendersText || "none"}
 Top money destinations (received FROM this wallet): ${topReceiversText || "none"}
 
-Tokens: ${Object.keys(wallet.totalReceived).join(", ")}
+Tokens used: ${Object.keys(wallet.totalReceived).join(", ")}
 
-Write a factual forensic summary covering: (1) overall activity pattern, (2) notable inflow sources, (3) notable outflow destinations and any risk observations. Be concise and specific. Do not invent data.`;
+Write the forensic summary using this exact format:
+### Activity Overview
+One paragraph about overall volume, frequency, and behaviour pattern.
+
+### Inflow Analysis
+Bullet points (- ) for each notable sender. Include amounts and what they might indicate.
+
+### Outflow Analysis
+Bullet points (- ) for each notable destination. Include amounts and any risk observations.
+
+Be factual and concise. Do not invent data. Use **bold** for key figures.`;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",

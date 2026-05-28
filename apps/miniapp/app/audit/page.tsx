@@ -27,6 +27,87 @@ function shorten(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+
+function inlineBold(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.startsWith("**") && p.endsWith("**")
+          ? <strong key={i} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong>
+          : p
+      )}
+    </>
+  );
+}
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const line of lines) {
+    const k = key++;
+    const trimmed = line.trimStart();
+
+    if (trimmed.startsWith("### ")) {
+      nodes.push(
+        <div key={k} style={{ fontWeight: 700, fontSize: "13px", color: "var(--ink)", marginTop: "10px", marginBottom: "2px", letterSpacing: "-0.01em" }}>
+          {trimmed.slice(4)}
+        </div>
+      );
+      continue;
+    }
+
+    if (trimmed.startsWith("## ")) {
+      nodes.push(
+        <div key={k} style={{ fontWeight: 700, fontSize: "14px", color: "var(--ink)", marginTop: "12px", marginBottom: "2px", letterSpacing: "-0.01em" }}>
+          {trimmed.slice(3)}
+        </div>
+      );
+      continue;
+    }
+
+    if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+      nodes.push(
+        <div key={k} style={{ display: "flex", gap: "6px", marginTop: "3px" }}>
+          <span style={{ color: "var(--green)", flexShrink: 0, marginTop: "1px" }}>•</span>
+          <span style={{ color: "var(--ink)", lineHeight: 1.55 }}>{inlineBold(trimmed.slice(2))}</span>
+        </div>
+      );
+      continue;
+    }
+
+    if (/^\d+\.\s/.test(trimmed)) {
+      const match = trimmed.match(/^(\d+)\.\s(.*)$/);
+      if (match) {
+        nodes.push(
+          <div key={k} style={{ display: "flex", gap: "6px", marginTop: "3px" }}>
+            <span style={{ color: "var(--ink-55)", flexShrink: 0, minWidth: "14px" }}>{match[1]}.</span>
+            <span style={{ lineHeight: 1.55 }}>{inlineBold(match[2] ?? "")}</span>
+          </div>
+        );
+        continue;
+      }
+    }
+
+    if (trimmed === "") {
+      nodes.push(<div key={k} style={{ height: "6px" }} />);
+      continue;
+    }
+
+    nodes.push(
+      <div key={k} style={{ marginTop: "2px", lineHeight: 1.6, color: "var(--ink)" }}>
+        {inlineBold(line)}
+      </div>
+    );
+  }
+
+  return nodes;
+}
+
 // ── SVG Transaction Tree ──────────────────────────────────────────────────────
 
 function TreeNode({ node, cx, cy, direction }: { node: TrailNode; cx: number; cy: number; direction: "in" | "out" }) {
@@ -374,10 +455,8 @@ export default function AuditPage() {
                 <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                   Forensic Summary · AI
                 </div>
-                <div style={{ fontSize: "13px", lineHeight: 1.6, color: "var(--ink)" }}>
-                  {result.narrative.split("\n").filter(Boolean).map((p, i) => (
-                    <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>
-                  ))}
+                <div style={{ fontSize: "13px" }}>
+                  {renderMarkdown(result.narrative)}
                 </div>
                 <div style={{ fontSize: "10px", color: "var(--ink-40)" }}>
                   Last {result.periodDays} days · {new Date(result.fetchedAt).toLocaleString()}
