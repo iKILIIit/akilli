@@ -71,6 +71,7 @@ export async function fetchFxRates(): Promise<FxRates> {
   }
 }
 
+/** Converts a USD amount to the given local currency using live or fallback rates. */
 export function convertUSD(usdAmount: number, currency: LocalCurrency, rates: FxRates): number {
   if (currency === "USD") return usdAmount;
   const rate = rates.rates[currency] ?? FALLBACK_RATES[currency] ?? 1;
