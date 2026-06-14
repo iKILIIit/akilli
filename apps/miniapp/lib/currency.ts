@@ -23,6 +23,7 @@ const FALLBACK_RATES: Record<string, number> = {
   NGN: 1620, KES: 129, GHS: 15.4, ZAR: 18.2, USD: 1,
 };
 
+/** Returns the user's preferred local currency, defaulting to USD. */
 export function getPreferredCurrency(): LocalCurrency {
   try {
     const v = localStorage.getItem(PREF_KEY);
