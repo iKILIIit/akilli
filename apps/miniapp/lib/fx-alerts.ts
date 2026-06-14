@@ -15,6 +15,7 @@ export type FxAlert = {
 
 const KEY = "akili_fx_alerts_v1";
 
+/** Returns all stored FX rate alerts from localStorage. */
 export function getFxAlerts(): FxAlert[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? "[]") as FxAlert[]; }
   catch { return []; }
