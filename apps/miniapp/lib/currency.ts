@@ -32,6 +32,7 @@ export function getPreferredCurrency(): LocalCurrency {
   return "USD";
 }
 
+/** Persists the user's local currency preference to localStorage. */
 export function setPreferredCurrency(currency: LocalCurrency): void {
   try { localStorage.setItem(PREF_KEY, currency); } catch { /* ignore */ }
 }
