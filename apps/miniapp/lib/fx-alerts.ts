@@ -32,6 +32,7 @@ export function addFxAlert(data: Omit<FxAlert, "id" | "createdAt">): FxAlert {
   return alert;
 }
 
+/** Deletes an FX alert by id. */
 export function removeFxAlert(id: string): void {
   save(getFxAlerts().filter(a => a.id !== id));
 }
