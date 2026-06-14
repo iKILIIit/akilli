@@ -78,6 +78,7 @@ export function convertUSD(usdAmount: number, currency: LocalCurrency, rates: Fx
   return usdAmount * rate;
 }
 
+/** Formats a local currency amount with the correct symbol and abbreviation for large values. */
 export function formatLocal(amount: number, currency: LocalCurrency): string {
   const meta = CURRENCY_META[currency];
   if (currency === "USD") return `$${amount.toFixed(2)}`;
