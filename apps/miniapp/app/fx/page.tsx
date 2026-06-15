@@ -20,6 +20,7 @@ import {
   removeFxAlert,
   toggleFxAlert,
 } from "../../lib/fx-alerts";
+import { lockInEscrow } from "../../lib/escrow";
 
 const TRACKED: LocalCurrency[] = ["NGN", "KES", "GHS", "ZAR"];
 
@@ -67,6 +68,16 @@ export default function FxPage() {
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  // Auto-send escrow state
+  const [showAutoSend, setShowAutoSend] = useState(false);
+  const [autoToken, setAutoToken] = useState<"USDC" | "USDT">("USDC");
+  const [autoRecipient, setAutoRecipient] = useState("");
+  const [autoAmount, setAutoAmount] = useState("");
+  const [autoCurrency, setAutoCurrency] = useState<LocalCurrency>("NGN");
+  const [autoRate, setAutoRate] = useState("");
+  const [autoStatus, setAutoStatus] = useState<"idle" | "pending" | "done" | "error">("idle");
+  const [autoTxHash, setAutoTxHash] = useState("");
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem("akili_fx_rates_prev");
@@ -100,6 +111,38 @@ export default function FxPage() {
     setSaved(true);
     haptic("medium");
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  async function handleAutoSend() {
+    const amount = parseFloat(autoAmount);
+    const rate   = parseFloat(autoRate);
+    if (!autoRecipient.startsWith("0x") || isNaN(amount) || amount <= 0 || isNaN(rate) || rate <= 0) return;
+
+    const eth = window.ethereum;
+    const accounts = eth?.request ? await (eth.request.bind(eth) as (a: { method: string }) => Promise<unknown>)({ method: "eth_requestAccounts" }) as string[] : undefined;
+    const account  = accounts?.[0];
+    if (!account) return;
+
+    setAutoStatus("pending");
+    haptic("medium");
+    try {
+      const { orderTx } = await lockInEscrow({
+        token: autoToken,
+        recipient: autoRecipient,
+        amountUSD: amount,
+        targetRate: rate,
+        currency: autoCurrency,
+        account,
+      });
+      setAutoTxHash(orderTx);
+      setAutoStatus("done");
+      haptic("heavy");
+      setAutoRecipient("");
+      setAutoAmount("");
+      setAutoRate("");
+    } catch {
+      setAutoStatus("error");
+    }
   }
 
   function trend(currency: LocalCurrency): "up" | "down" | "flat" {
@@ -272,6 +315,158 @@ export default function FxPage() {
             <div style={{ fontSize: "10px", color: "var(--ink-40)", marginTop: "8px", lineHeight: 1.5 }}>
               Recipient exchanges USDT → local currency via MiniPay or a local exchange.
             </div>
+          </div>
+
+          {/* Auto-send escrow */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "18px", padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>Auto-Send at Target Rate</div>
+                <div style={{ fontSize: "11px", color: "var(--ink-55)", marginTop: "2px" }}>
+                  Lock USDC/USDT in escrow — Akili sends automatically when rate hits your target
+                </div>
+              </div>
+              <span style={{ fontSize: "22px" }}>⚡</span>
+            </div>
+
+            {autoStatus === "done" ? (
+              <div style={{ background: "var(--green-soft)", border: "1px solid var(--green)", borderRadius: "14px", padding: "14px", textAlign: "center" }}>
+                <div style={{ fontSize: "20px", marginBottom: "6px" }}>✓</div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--green-ink)", marginBottom: "4px" }}>Funds locked in escrow</div>
+                <div style={{ fontSize: "11px", color: "var(--green-ink)", opacity: 0.8, marginBottom: "8px" }}>
+                  Akili will send automatically when {autoCurrency} hits your target rate
+                </div>
+                <a
+                  href={`https://celoscan.io/tx/${autoTxHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: "11px", color: "var(--green-ink)", textDecoration: "underline" }}
+                >
+                  View on Celoscan →
+                </a>
+                <button
+                  type="button"
+                  onClick={() => { setAutoStatus("idle"); setShowAutoSend(false); }}
+                  style={{ display: "block", width: "100%", marginTop: "10px", padding: "9px", borderRadius: "10px", border: "1px solid var(--line)", background: "transparent", color: "var(--ink-70)", fontSize: "12px", cursor: "pointer" }}
+                >
+                  Set another order
+                </button>
+              </div>
+            ) : showAutoSend ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {(["USDC", "USDT"] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setAutoToken(t)}
+                      style={{
+                        flex: 1, padding: "8px", borderRadius: "10px", fontSize: "12px", cursor: "pointer",
+                        border: `1.5px solid ${autoToken === t ? "var(--ink)" : "var(--line)"}`,
+                        background: autoToken === t ? "var(--ink)" : "transparent",
+                        color: autoToken === t ? "#fffdf7" : "var(--ink-70)", fontWeight: 600
+                      }}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Recipient address</div>
+                  <input
+                    type="text"
+                    value={autoRecipient}
+                    onChange={e => setAutoRecipient(e.target.value)}
+                    placeholder="0x..."
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--line)", background: "var(--bg-soft)", fontSize: "12px", fontFamily: "var(--font-mono)", color: "var(--ink)", outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Amount (USD)</div>
+                    <input
+                      type="number"
+                      value={autoAmount}
+                      onChange={e => setAutoAmount(e.target.value)}
+                      placeholder="50"
+                      min="1"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--line)", background: "var(--bg-soft)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)", outline: "none", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>Currency</div>
+                    <select
+                      value={autoCurrency}
+                      onChange={e => setAutoCurrency(e.target.value as LocalCurrency)}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--line)", background: "var(--bg-soft)", fontSize: "13px", color: "var(--ink)", outline: "none", boxSizing: "border-box" }}
+                    >
+                      {TRACKED.map(c => <option key={c} value={c}>{CURRENCY_META[c].flag} {c}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: "10px", color: "var(--ink-55)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px" }}>
+                    Send when 1 USD ≥ ? {autoCurrency}
+                    {rates && (
+                      <span style={{ marginLeft: "6px", color: "var(--ink-40)", textTransform: "none", letterSpacing: 0 }}>
+                        Now: {Math.round(rates.rates[autoCurrency] ?? 0).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="number"
+                    value={autoRate}
+                    onChange={e => setAutoRate(e.target.value)}
+                    placeholder={`e.g. ${Math.round((rates?.rates[autoCurrency] ?? 1600) * 1.02).toLocaleString()}`}
+                    min="0"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid var(--line)", background: "var(--bg-soft)", fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)", outline: "none", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                {autoStatus === "error" && (
+                  <div style={{ fontSize: "12px", color: "#EF4444", textAlign: "center" }}>
+                    Transaction failed or was rejected. Try again.
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button type="button" onClick={() => { setShowAutoSend(false); setAutoStatus("idle"); }}
+                    style={{ flex: 1, padding: "11px", borderRadius: "12px", border: "1px solid var(--line)", background: "transparent", color: "var(--ink-70)", fontSize: "13px", cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAutoSend}
+                    disabled={autoStatus === "pending" || !autoRecipient || !autoAmount || !autoRate}
+                    style={{
+                      flex: 2, padding: "11px", borderRadius: "12px", border: "none",
+                      background: "var(--ink)", color: "#fffdf7",
+                      fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                      opacity: autoStatus === "pending" || !autoRecipient || !autoAmount || !autoRate ? 0.5 : 1
+                    }}>
+                    {autoStatus === "pending" ? "Confirm in wallet…" : "Lock & Schedule Send"}
+                  </button>
+                </div>
+
+                <div style={{ fontSize: "10px", color: "var(--ink-40)", lineHeight: 1.5, textAlign: "center" }}>
+                  You will sign 2 transactions: approve token spend, then lock in escrow.
+                  Funds are returned if you cancel before execution.
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { setShowAutoSend(true); haptic("light"); }}
+                style={{
+                  width: "100%", padding: "13px", borderRadius: "14px",
+                  border: "1.5px dashed var(--line-strong)",
+                  background: "transparent", color: "var(--ink-70)",
+                  fontSize: "14px", fontWeight: 600, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px"
+                }}>
+                <span>⚡</span> Schedule Auto-Send
+              </button>
+            )}
           </div>
 
           {/* FX alerts */}

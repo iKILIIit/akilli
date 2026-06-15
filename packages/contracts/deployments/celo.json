@@ -7,6 +7,12 @@
       "address": "0x0c0345b3DFBFFD4300255F9DB933A4751cCD2124",
       "owner": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
       "celoscan": "https://celoscan.io/address/0x0c0345b3DFBFFD4300255F9DB933A4751cCD2124"
+    },
+    "AkiliEscrow": {
+      "address": "0xcCa0A1CF96f41f467E0E5D52d89003C1F77503B6",
+      "executor": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
+      "celoscan": "https://celoscan.io/address/0xcCa0A1CF96f41f467E0E5D52d89003C1F77503B6",
+      "deployedAt": "2026-06-15"
     }
   },
   "erc8004": {
