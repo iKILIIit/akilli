@@ -1,17 +1,14 @@
 import Link from "next/link";
 import type { PropsWithChildren, ReactNode } from "react";
-import { BottomNav } from "./bottom-nav";
 
 export function ScreenFrame({
   children,
-  nav = true,
   className,
 }: PropsWithChildren<{ nav?: boolean; className?: string }>) {
   return (
     <main className="page-shell">
       <div className={className ? `app-surface ${className}` : "app-surface"}>
         {children}
-        {nav ? <BottomNav /> : null}
       </div>
     </main>
   );

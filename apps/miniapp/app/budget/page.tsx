@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { BottomNav } from "../../components/bottom-nav";
 import { toast } from "../../components/toast";
 import { useMiniPay } from "../../hooks/use-minipay";
 import { useStableTokenBalances } from "../../hooks/use-stable-token-balances";
@@ -412,7 +411,6 @@ export default function BudgetPage() {
             </p>
           </div>
         </div>
-        <BottomNav />
       </main>
     );
   }
@@ -1000,8 +998,6 @@ export default function BudgetPage() {
           }
         `}</style>
       </div>
-      <BottomNav />
-
       {receiptTx && wallet && (
         <ReceiptModal
           tx={receiptTx}

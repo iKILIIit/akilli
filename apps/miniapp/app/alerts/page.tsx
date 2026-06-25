@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BottomNav } from "../../components/bottom-nav";
 import {
   type AlertPeriod,
   type AlertRule,
@@ -370,7 +369,6 @@ export default function AlertsPage() {
           </Link>
         </div>
       </div>
-      <BottomNav />
     </main>
   );
 }

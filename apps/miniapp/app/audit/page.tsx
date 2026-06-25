@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useMiniPay } from "../../hooks/use-minipay";
-import { BottomNav } from "../../components/bottom-nav";
 import { toast } from "../../components/toast";
 import {
   TRAIL_FREE_LIMIT, TRAIL_PRICE_DISPLAY,
@@ -482,7 +481,6 @@ export default function AuditPage() {
         )}
       </div>
 
-      <BottomNav />
     </main>
   );
 }

@@ -1,6 +1,5 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
-import { BottomNav } from "./bottom-nav";
 
 type AppShellProps = PropsWithChildren<{
   eyebrow: string;
@@ -34,7 +33,6 @@ export function AppShell({
       <main className="page-shell">
         <div className="app-surface app-surface--minimal">
           <section className="content-grid">{children}</section>
-          <BottomNav />
         </div>
       </main>
     );
@@ -91,8 +89,6 @@ export function AppShell({
         </section>
 
         <section className="content-grid">{children}</section>
-
-        <BottomNav />
       </div>
     </main>
   );

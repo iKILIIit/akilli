@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BottomNav } from "../../components/bottom-nav";
 import { haptic } from "../../lib/haptics";
 import {
   type FxRates,
@@ -667,7 +666,6 @@ export default function FxPage() {
 
         </div>
       </div>
-      <BottomNav />
     </main>
   );
 }

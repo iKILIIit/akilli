@@ -1,177 +1,266 @@
 "use client";
 
-import type { Token } from "@yield-copilot/shared";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BottomNav } from "../components/bottom-nav";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Sidebar } from "../components/sidebar";
 import { SpendingAlertModal } from "../components/spending-alert-modal";
 import { WalletConnectModal } from "../components/wallet-connect-modal";
+import { toast } from "../components/toast";
+import { haptic } from "../lib/haptics";
 import { useMiniPay } from "../hooks/use-minipay";
-import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useStableTokenBalances } from "../hooks/use-stable-token-balances";
 import {
-  type FxRates,
-  type LocalCurrency,
-  CURRENCY_META,
-  convertUSD,
-  fetchFxRates,
-  formatLocal,
-  getPreferredCurrency,
-  setPreferredCurrency,
-} from "../lib/currency";
+  AI_PRICE_DISPLAY,
+  FREE_LIMIT,
+  getFreeAuditsRemaining,
+  getFreeChatRemaining,
+  recordAuditUsed,
+  recordChatUsed,
+  payForAI,
+} from "../lib/payment";
 
-function USDCLogo() {
+// ── Types & constants ────────────────────────────────────────────────────────
+
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  reportType?: string;
+};
+
+type QuickAction = { label: string; reportType: string; prompt: string };
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: "Spending Advice", reportType: "spending-advice", prompt: "Give me personalized spending advice based on my wallet activity." },
+  { label: "Account Summary", reportType: "account-summary", prompt: "Summarize my account activity for the last 90 days." },
+  { label: "Wallet Audit", reportType: "wallet-audit", prompt: "Audit my wallet and give me a financial health score." },
+  { label: "Monthly Plan", reportType: "monthly-plan", prompt: "Build a realistic monthly budget and savings plan based on my transaction history." },
+  { label: "Statement", reportType: "wallet-statement", prompt: "Generate a formal wallet statement of my transactions." },
+  { label: "Remittance Cost", reportType: "remittance-analysis", prompt: "Analyze my cross-border sends and show me what they actually cost vs traditional remittance services." },
+];
+
+const FOLLOW_UPS: Record<string, string[]> = {
+  "spending-advice": ["What's my biggest expense?", "How can I save more?", "Compare my spending to last month"],
+  "wallet-audit": ["What's my health score mean?", "How do I improve my score?", "Show my top payees"],
+  "account-summary": ["Break down by category", "What were my biggest sends?", "Generate a statement"],
+  "monthly-plan": ["How much should I save?", "What's my daily budget?", "Set a spending alert"],
+  "wallet-statement": ["Audit my wallet", "Give spending advice", "What's my balance trend?"],
+  "remittance-analysis": ["How much could I save vs Western Union?", "When's the best time to send money?", "Show my top recipients"],
+};
+const DEFAULT_FOLLOW_UPS = ["Tell me more", "Give me advice", "Summarize this"];
+
+const PLACEHOLDERS = [
+  "Ask about your wallet…",
+  "How much did I spend this month?",
+  "What's my biggest expense?",
+  "Am I saving enough?",
+  "Audit my wallet…",
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatTime(d: Date) {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+  for (const line of lines) {
+    const k = key++;
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith("### ")) {
+      nodes.push(<div key={k} style={{ fontWeight: 700, fontSize: "13px", color: "var(--ink)", marginTop: "10px", marginBottom: "2px", letterSpacing: "-0.01em" }}>{trimmed.slice(4)}</div>);
+      continue;
+    }
+    if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+      nodes.push(<div key={k} style={{ display: "flex", gap: "6px", marginTop: "2px" }}><span style={{ color: "var(--ink-55)", flexShrink: 0, marginTop: "1px" }}>&bull;</span><span>{inlineBold(trimmed.slice(2))}</span></div>);
+      continue;
+    }
+    if (/^\d+\.\s/.test(trimmed)) {
+      const match = trimmed.match(/^(\d+)\.\s(.*)$/);
+      if (match) {
+        nodes.push(<div key={k} style={{ display: "flex", gap: "6px", marginTop: "2px" }}><span style={{ color: "var(--ink-55)", flexShrink: 0, minWidth: "14px" }}>{match[1]}.</span><span>{inlineBold(match[2] ?? "")}</span></div>);
+        continue;
+      }
+    }
+    if (trimmed === "") { nodes.push(<div key={k} style={{ height: "4px" }} />); continue; }
+    nodes.push(<div key={k} style={{ marginTop: "2px" }}>{inlineBold(line)}</div>);
+  }
+  return nodes;
+}
+
+function inlineBold(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  if (parts.length === 1) return text;
+  return <>{parts.map((p, i) => p.startsWith("**") && p.endsWith("**") ? <strong key={i} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong> : p)}</>;
+}
+
+async function downloadStatement(content: string, address: string) {
+  const testBlob = new Blob([""], { type: "application/pdf" });
+  const testFile = new File([testBlob], "test.pdf", { type: "application/pdf" });
+  if (navigator.canShare?.({ files: [testFile] })) {
+    const { jsPDF } = await import("jspdf");
+    const date = new Date().toISOString().slice(0, 10);
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const margin = 18;
+    const usableW = pageW - margin * 2;
+    let y = 22;
+    doc.setFillColor(61, 214, 140);
+    doc.rect(0, 0, pageW, 16, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+    doc.text("AKILI — AI Financial Copilot", margin, 10.5);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    doc.text("Wallet Statement", pageW - margin, 10.5, { align: "right" });
+    doc.setTextColor(60, 60, 60); doc.setFontSize(8);
+    doc.text(`Wallet: ${address}`, margin, y); y += 5;
+    doc.text(`Network: Celo Mainnet  ·  Generated: ${new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })}`, margin, y);
+    y += 2; doc.setDrawColor(200, 200, 200); doc.line(margin, y + 2, pageW - margin, y + 2); y += 7;
+    for (const raw of content.split("\n")) {
+      if (y > 272) { doc.addPage(); y = 20; }
+      const line = raw.trimStart();
+      if (line.startsWith("### ")) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(30, 30, 30);
+        doc.text(line.slice(4), margin, y); y += 6;
+      } else if (line.startsWith("- ") || line.startsWith("• ")) {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+        const w = doc.splitTextToSize("• " + line.slice(2).replace(/\*\*/g, ""), usableW - 4);
+        doc.text(w, margin + 2, y); y += (w as string[]).length * 5;
+      } else if (line === "") { y += 2; }
+      else {
+        doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+        const w = doc.splitTextToSize(line.replace(/\*\*/g, ""), usableW);
+        doc.text(w, margin, y); y += (w as string[]).length * 5;
+      }
+    }
+    const totalPages = (doc.internal as unknown as { getNumberOfPages: () => number }).getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i); const ph = doc.internal.pageSize.getHeight();
+      doc.setDrawColor(200, 200, 200); doc.line(margin, ph - 12, pageW - margin, ph - 12);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(150, 150, 150);
+      doc.text("Generated by Akili · akilii-minipay.vercel.app", margin, ph - 7);
+      doc.text(`Page ${i} of ${totalPages}`, pageW - margin, ph - 7, { align: "right" });
+    }
+    const filename = `akili-statement-${address.slice(0, 6)}-${date}.pdf`;
+    const blob = doc.output("blob");
+    await navigator.share({ files: [new File([blob], filename, { type: "application/pdf" })], title: "Akili Wallet Statement" });
+    return;
+  }
+  const res = await fetch("/api/statement", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, address }),
+  });
+  if (!res.ok) throw new Error("Could not prepare download — please try again.");
+  const { id } = (await res.json()) as { id: string };
+  window.open(`/api/statement?id=${id}`, "_blank");
+}
+
+// ── Icons ────────────────────────────────────────────────────────────────────
+
+function AkiliEyes({ large }: { large?: boolean }) {
+  const size = large ? 48 : 28;
+  const svgW = large ? 36 : 22;
+  const svgH = large ? 22 : 14;
   return (
-    <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="16" fill="#2775CA" />
-      <circle cx="16" cy="16" r="12.8" fill="white" fillOpacity="0.15" />
-      <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z" fill="none" />
-      <text x="16" y="20" textAnchor="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="Arial,sans-serif">USDC</text>
-      <circle cx="16" cy="16" r="15" stroke="white" strokeOpacity="0.2" strokeWidth="0.5" fill="none" />
+    <div style={{
+      width: `${size}px`, height: `${size}px`, borderRadius: "50%",
+      background: "var(--slab)", flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <svg width={svgW} height={svgH} viewBox="0 0 22 14" fill="none" aria-hidden="true">
+        <style>{`
+          @keyframes akili-orbit {
+            0%   { transform: translate(0px, -1.5px); }
+            25%  { transform: translate(1.5px, 0px); }
+            50%  { transform: translate(0px, 1.5px); }
+            75%  { transform: translate(-1.5px, 0px); }
+            100% { transform: translate(0px, -1.5px); }
+          }
+          .ak-pl { animation: akili-orbit 2s linear infinite; transform-box: fill-box; transform-origin: center; }
+          .ak-pr { animation: akili-orbit 2s linear infinite; transform-box: fill-box; transform-origin: center; }
+        `}</style>
+        <ellipse cx="5" cy="7" rx="4.5" ry="5.5" fill="white" />
+        <ellipse cx="17" cy="7" rx="4.5" ry="5.5" fill="white" />
+        <circle className="ak-pl" cx="5" cy="7" r="2.2" fill="#1a1505" />
+        <circle className="ak-pr" cx="17" cy="7" r="2.2" fill="#1a1505" />
+      </svg>
+    </div>
+  );
+}
+
+function SendIcon({ disabled }: { disabled: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 8h12M8 3l7 5-7 5" stroke={disabled ? "var(--ink-40)" : "#fffdf7"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function USDTLogo() {
+function DownloadIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="16" fill="#26A17B" />
-      <circle cx="16" cy="16" r="12.8" fill="white" fillOpacity="0.15" />
-      <text x="16" y="21" textAnchor="middle" fill="white" fontSize="15" fontWeight="700" fontFamily="Arial,sans-serif">₮</text>
-      <circle cx="16" cy="16" r="15" stroke="white" strokeOpacity="0.2" strokeWidth="0.5" fill="none" />
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <path d="M8 2v8M5 7l3 4 3-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 13h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
 
-function TokenLogo({ symbol }: { symbol: string }) {
-  if (symbol === "USDC") return <USDCLogo />;
-  if (symbol === "USDT") return <USDTLogo />;
-  return <span className={`token-card__dot token-card__dot--${symbol.toLowerCase()}`} aria-hidden="true" />;
-}
+// ── Main component ───────────────────────────────────────────────────────────
 
-function ArrowRightIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path
-        d="M3 7h8M7.5 3.5L11 7l-3.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-      <path d="M4 12V8a5 5 0 0110 0v4l1.2 1.5H2.8L4 12z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M7.5 15.5a1.5 1.5 0 003 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M2 8s2.3-4.5 6.5-4.5c1.4 0 2.6.4 3.6 1M14 8s-1.1 2.2-3.5 3.6M2 2l12 12"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function SpendingIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-      <path d="M3 14V8M8 14V4M13 14v-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M2 16h14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AuditIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-      <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M12 12l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 8h4M8 6v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function truncateWalletAddress(address?: string) {
-  if (!address) return "Waiting for wallet";
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
-
-const LOCAL_CURRENCIES: LocalCurrency[] = ["USD", "NGN", "KES", "GHS", "ZAR"];
-
-export default function HomePage() {
+function HomeInner() {
   const router = useRouter();
   const miniPay = useMiniPay();
-  const { balances, isLoading: balancesLoading, refresh: refreshBalances } = useStableTokenBalances(miniPay.walletAddress);
-  const isMiniPay = miniPay.isMiniPayProvider;
-  const { refreshing: pullRefreshing } = usePullToRefresh({ onRefresh: refreshBalances });
-  const [selectedToken, setSelectedToken] = useState<Token>("USDC");
+  const { balances } = useStableTokenBalances(miniPay.walletAddress);
+  const searchParams = useSearchParams();
+  const actionParam = searchParams.get("action");
+  const autoTriggered = useRef(false);
+
+  // Sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Wallet
   const [hasTriedAutoConnect, setHasTriedAutoConnect] = useState(false);
   const [isAutoConnecting, setIsAutoConnecting] = useState(false);
-  const [addressCopied, setAddressCopied] = useState(false);
-  const [localCurrency, setLocalCurrency] = useState<LocalCurrency>("USD");
-  const [fxRates, setFxRates] = useState<FxRates | null>(null);
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
-  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
-  const [streak, setStreak] = useState(0);
-  const currencyBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Chat
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [freeAudits, setFreeAudits] = useState(FREE_LIMIT);
+  const [freeChat, setFreeChat] = useState(FREE_LIMIT);
+  const [paywallPending, setPaywallPending] = useState<{ content: string; reportType?: string } | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [payingForId, setPayingForId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  // ── Effects ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     try {
       if (!localStorage.getItem("akili_onboarded")) {
         router.replace("/onboarding");
       }
-    } catch { /* ignore — SSR or restricted */ }
+    } catch { /* SSR or restricted */ }
   }, [router]);
 
   useEffect(() => {
-    setLocalCurrency(getPreferredCurrency());
-    void fetchFxRates().then(setFxRates);
+    setFreeAudits(getFreeAuditsRemaining());
+    setFreeChat(getFreeChatRemaining());
   }, []);
 
   useEffect(() => {
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const last = localStorage.getItem("akili_last_open");
-      const cur = parseInt(localStorage.getItem("akili_streak") ?? "0", 10);
-      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-      const next = last === today ? cur : last === yesterday ? cur + 1 : 1;
-      localStorage.setItem("akili_last_open", today);
-      localStorage.setItem("akili_streak", String(next));
-      setStreak(next);
-    } catch { /* ignore */ }
+    const t = setInterval(() => setPlaceholderIdx((i) => (i + 1) % PLACEHOLDERS.length), 3500);
+    return () => clearInterval(t);
   }, []);
 
-  function copyAddress() {
-    if (!miniPay.walletAddress) return;
-    void navigator.clipboard.writeText(miniPay.walletAddress).then(() => {
-      setAddressCopied(true);
-      setTimeout(() => setAddressCopied(false), 2000);
-    });
-  }
-
-  const positiveBalances = useMemo(
-    () => balances.filter((balance) => balance.hasBalance),
-    [balances]
-  );
-
-  const totalPortfolioUSD = useMemo(
-    () => positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0),
-    [positiveBalances]
-  );
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     if (miniPay.isLoading || miniPay.walletAddress || !miniPay.isMiniPayProvider || hasTriedAutoConnect) return;
@@ -181,30 +270,108 @@ export default function HomePage() {
   }, [hasTriedAutoConnect, miniPay]);
 
   useEffect(() => {
-    if (positiveBalances.length === 0) return;
-    const [firstPositiveBalance] = positiveBalances;
-    if (firstPositiveBalance && !positiveBalances.some((b) => b.symbol === selectedToken)) {
-      setSelectedToken(firstPositiveBalance.symbol);
+    if (!actionParam || !miniPay.walletAddress || autoTriggered.current || chatLoading) return;
+    const action = QUICK_ACTIONS.find((a) => a.reportType === actionParam);
+    if (action) {
+      autoTriggered.current = true;
+      sendMessage(action.prompt, action.reportType);
     }
-  }, [positiveBalances, selectedToken]);
+  }, [miniPay.walletAddress, actionParam]);
 
-  const selectedBalance =
-    positiveBalances.find((b) => b.symbol === selectedToken) ??
-    balances.find((b) => b.symbol === selectedToken);
+  // ── Derived ──────────────────────────────────────────────────────────────
 
-  const canAnalyze = Boolean(miniPay.walletAddress);
-  const walletSummary = miniPay.walletAddress
+  const positiveBalances = useMemo(
+    () => balances.filter((b) => b.hasBalance),
+    [balances],
+  );
+
+  const totalPortfolioUSD = useMemo(
+    () => positiveBalances.reduce((s, b) => s + parseFloat(b.displayAmount.replace(/,/g, "") || "0"), 0),
+    [positiveBalances],
+  );
+
+  const address = miniPay.walletAddress;
+  const walletSummary = address
     ? "Connected"
     : isAutoConnecting || (miniPay.isMiniPayProvider && miniPay.isLoading)
       ? "Auto-connecting"
       : "Wallet required";
 
+  const hasMessages = messages.length > 0;
+
+  // ── Chat logic ───────────────────────────────────────────────────────────
+
+  function newChat() {
+    setMessages([]);
+    setPaywallPending(null);
+  }
+
+  async function executeMessage(content: string, reportType?: string, userMsgOverride?: Message) {
+    const userMsg: Message = userMsgOverride ?? { id: Date.now().toString(), role: "user", content, timestamp: new Date() };
+    if (!userMsgOverride) setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setChatLoading(true);
+    try {
+      const endpoint = reportType ? "/api/report" : "/api/chat";
+      const body = reportType
+        ? { walletAddress: address, reportType, days: 90 }
+        : {
+            walletAddress: address,
+            messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+          };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as Record<string, unknown>;
+      if (!res.ok) {
+        const errMsg =
+          res.status === 429
+            ? "You're sending messages too quickly. Please wait a moment and try again."
+            : typeof data.error === "string"
+              ? data.error
+              : "Something went wrong. Please try again.";
+        setMessages((prev) => [...prev, { id: `${Date.now()}-e`, role: "assistant", content: errMsg, timestamp: new Date() }]);
+        return;
+      }
+      const reply = (data.narrative ?? data.reply ?? "Could not get a response.") as string;
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-r`, role: "assistant", content: reply, timestamp: new Date(), ...(reportType ? { reportType } : {}) },
+      ]);
+      if (reportType) { recordAuditUsed(); setFreeAudits(getFreeAuditsRemaining()); }
+      else { recordChatUsed(); setFreeChat(getFreeChatRemaining()); }
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `${Date.now()}-e`, role: "assistant", content: "Network error — check your connection and try again.", timestamp: new Date() },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
+  async function sendMessage(content: string, reportType?: string) {
+    if (!content.trim() || !address) return;
+    haptic("light");
+    const isReport = Boolean(reportType);
+    const remaining = isReport ? getFreeAuditsRemaining() : getFreeChatRemaining();
+    if (remaining === 0) {
+      const userMsg: Message = { id: Date.now().toString(), role: "user", content, timestamp: new Date() };
+      setMessages((prev) => [...prev, userMsg]);
+      setInput("");
+      setPaywallPending(reportType ? { content, reportType } : { content });
+      return;
+    }
+    await executeMessage(content, reportType);
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
-    <main className="page-shell dashboard-enter">
-      <SpendingAlertModal
-        walletAddress={miniPay.walletAddress}
-        totalBalance={totalPortfolioUSD}
-      />
+    <main className="chat-layout">
+      <SpendingAlertModal walletAddress={miniPay.walletAddress} totalBalance={totalPortfolioUSD} />
 
       <WalletConnectModal
         isOpen={!miniPay.isLoading && !miniPay.walletAddress}
@@ -215,366 +382,379 @@ export default function HomePage() {
         onConnect={miniPay.connect}
       />
 
-      <div className="dashboard">
-        <header className="dashboard-topbar">
-          <div className="dashboard-brand">
-            <span className="dashboard-brand__mark">A</span>
-            <div className="dashboard-brand__name">Akili</div>
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        balances={balances}
+        totalPortfolioUSD={totalPortfolioUSD}
+        walletAddress={miniPay.walletAddress}
+        walletSummary={walletSummary}
+        onNewChat={newChat}
+      />
+
+      {/* ── Top bar ── */}
+      <header className="chat-topbar">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="chat-topbar__btn"
+          aria-label="Open menu"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <div className="chat-topbar__title">Akili</div>
+
+        <div className="chat-topbar__right">
+          {hasMessages && (
+            <button
+              type="button"
+              onClick={newChat}
+              className="chat-topbar__btn"
+              aria-label="New chat"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M9 3v12M3 9h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+          <div className="chat-topbar__status">
+            <span
+              className="chat-topbar__dot"
+              style={{ background: address ? "var(--green)" : "var(--amber)" }}
+            />
           </div>
-          <div className="dashboard-topbar__actions">
-            <Link href="/alerts" className="dashboard-topbar__icon" aria-label="View alerts">
-              <BellIcon />
-            </Link>
-            <Link href="/support" className="dashboard-avatar" aria-label="Open support">AM</Link>
-          </div>
-        </header>
+        </div>
+      </header>
 
-        <section className="dashboard-home-stack">
-          <article className="dashboard-hero-home">
-            <div className="dashboard-hero-home__glow" aria-hidden="true" />
-            <div className="dashboard-hero-home__top">
-              <p className="section-label section-label--on-dark">
-                AI Financial Copilot
-              </p>
-              <div
-                className="dashboard-hero-home__status"
-                onClick={miniPay.walletAddress ? copyAddress : undefined}
-                style={{ cursor: miniPay.walletAddress ? "pointer" : "default" }}
-                title={miniPay.walletAddress ?? undefined}
-                role={miniPay.walletAddress ? "button" : undefined}
-                aria-label={miniPay.walletAddress ? `Copy wallet address: ${truncateWalletAddress(miniPay.walletAddress)}` : undefined}
-                tabIndex={miniPay.walletAddress ? 0 : undefined}
-                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") copyAddress(); }}
-              >
-                <span className="dashboard-hero-home__dot" />
-                <span>{addressCopied ? "Copied!" : walletSummary}</span>
-              </div>
-              {streak > 1 && (
-                <span style={{
-                  fontSize: "10px", fontWeight: 700, color: "rgba(255,255,255,0.7)",
-                  background: "rgba(255,255,255,0.12)", borderRadius: "20px",
-                  padding: "2px 7px", letterSpacing: "0.02em"
-                }}>
-                  🔥 {streak}d
-                </span>
-              )}
-            </div>
-
-            {/* Balance + eye icon on one row */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div>
-                <div className="dashboard-balance-card__amount">
-                  {selectedBalance?.hasBalance
-                    ? `${selectedBalance.displayAmount} ${selectedBalance.symbol}`
-                    : miniPay.walletAddress
-                      ? "0 stable balance"
-                      : "••••"}
-                </div>
-                {positiveBalances.length > 1 && (
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>Portfolio: ${totalPortfolioUSD.toFixed(2)}</div>
-                )}
-              </div>
-              <div style={{ color: "var(--slab-ink-70)", marginTop: "6px", flexShrink: 0 }}>
-                <EyeOffIcon />
-              </div>
-            </div>
-
-            {/* Local currency + currency selector on one row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-              {miniPay.walletAddress && fxRates && localCurrency !== "USD" && (() => {
-                return totalPortfolioUSD > 0 ? (
-                  <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", fontFamily: "var(--font-mono)" }}>
-                    ≈ {formatLocal(convertUSD(totalPortfolioUSD, localCurrency, fxRates), localCurrency)}
-                  </span>
-                ) : null;
-              })()}
+      {/* ── Empty state (ChatGPT-style) ── */}
+      {!hasMessages && (
+        <div className="chat-empty">
+          <AkiliEyes large />
+          <h1 className="chat-empty__title">What would you like to know?</h1>
+          <p className="chat-empty__subtitle">
+            Analyze your wallet, get spending advice, audit your activity, or generate a statement.
+          </p>
+          <div className="chat-empty__grid">
+            {QUICK_ACTIONS.map((a) => (
               <button
-                ref={currencyBtnRef}
+                key={a.reportType}
                 type="button"
-                onClick={() => {
-                  if (!showCurrencyPicker && currencyBtnRef.current) {
-                    const r = currencyBtnRef.current.getBoundingClientRect();
-                    setPickerPos({ top: r.bottom + 6, left: r.left });
-                  }
-                  setShowCurrencyPicker(p => !p);
-                }}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "4px",
-                  background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
-                  borderRadius: "999px", padding: "3px 10px", cursor: "pointer",
-                  fontSize: "11px", color: "rgba(255,255,255,0.85)", fontWeight: 600
-                }}
+                onClick={() => sendMessage(a.prompt, a.reportType)}
+                disabled={chatLoading || !address}
+                className="chat-empty__chip"
               >
-                {CURRENCY_META[localCurrency].flag} {localCurrency} ▾
-              </button>
-            </div>
-
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-              {[
-                { label: "Spending Advice", action: "spending-advice" },
-                { label: "Wallet Audit", action: "wallet-audit" },
-                { label: "Statement", action: "wallet-statement" },
-              ].map((item) => (
-                <Link
-                  key={item.action}
-                  href={canAnalyze ? `/copilot?action=${item.action}` : "/copilot"}
-                  className="inline-chip inline-chip--slab"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-
-            <div className="dashboard-hero-home__footer dashboard-hero-home__footer--bundle">
-              <div className="dashboard-hero-home__range" style={{ fontSize: "0.6rem" }}>
-                {canAnalyze ? "Wallet connected · ready" : "Wallet required"}
-              </div>
-              <Link href="/copilot" className="dashboard-primary-link">
-                Open Copilot
-                <ArrowRightIcon />
-              </Link>
-            </div>
-          </article>
-
-          <div className="dashboard-section-head">
-            <p className="section-label">Stable balances</p>
-            <span>{pullRefreshing || balancesLoading ? "Refreshing…" : miniPay.walletAddress ? `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : walletSummary}</span>
-          </div>
-
-          <div className="wallet-token-grid">
-            {balances.map((balance) => (
-              <button
-                key={balance.symbol}
-                type="button"
-                className={
-                  selectedToken === balance.symbol
-                    ? "wallet-token-card is-selected"
-                    : "wallet-token-card"
-                }
-                onClick={() => setSelectedToken(balance.symbol)}
-                disabled={!miniPay.walletAddress}
-                aria-pressed={selectedToken === balance.symbol}
-                aria-label={`${balance.symbol} balance: ${balance.displayAmount}`}
-              >
-                <TokenLogo symbol={balance.symbol} />
-                <strong>{balance.symbol}</strong>
-                <small>{balance.displayAmount}</small>
+                {a.label}
               </button>
             ))}
           </div>
-
-          <Link href="/audit" style={{ textDecoration: "none" }}>
-            <div style={{
-              background: "var(--surface)", border: "1px solid var(--line)",
-              borderRadius: "18px", padding: "14px 16px",
-              display: "flex", alignItems: "center", gap: "14px"
-            }}>
-              <div style={{
-                width: "40px", height: "40px", borderRadius: "14px", flexShrink: 0,
-                background: "var(--slab)", display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: "20px"
-              }}>🔍</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>Wallet Audit Trail</div>
-                <div style={{ fontSize: "11px", color: "var(--ink-55)", marginTop: "2px" }}>
-                  Trace any Celo wallet — see where money came from and went
-                </div>
-              </div>
-              <span style={{ fontSize: "14px", color: "var(--ink-40)", flexShrink: 0 }}>→</span>
-            </div>
-          </Link>
-
-          <Link href="/fx" style={{ textDecoration: "none" }}>
-            <div style={{
-              background: "var(--surface)", border: "1px solid var(--line)",
-              borderRadius: "18px", padding: "14px 16px",
-              display: "flex", alignItems: "center", gap: "14px"
-            }}>
-              <div style={{
-                width: "40px", height: "40px", borderRadius: "14px", flexShrink: 0,
-                background: "var(--slab)", display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: "20px"
-              }}>💱</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--ink)" }}>FX Rates & Alerts</div>
-                <div style={{ fontSize: "11px", color: "var(--ink-55)", marginTop: "2px" }}>
-                  Live NGN · KES · GHS · ZAR rates, alerts &amp; send route advisory
-                </div>
-              </div>
-              {fxRates && localCurrency !== "USD" && (
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: "12px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--ink)" }}>
-                    {Math.round(fxRates.rates[localCurrency] ?? 0).toLocaleString()}
-                  </div>
-                  <div style={{ fontSize: "10px", color: "var(--ink-40)" }}>{localCurrency}/USD</div>
-                </div>
-              )}
-              <span style={{ fontSize: "14px", color: "var(--ink-40)", flexShrink: 0 }}>→</span>
-            </div>
-          </Link>
-
-          {miniPay.walletAddress && !balancesLoading && positiveBalances.length === 0 ? (
-            <div className="wallet-empty-card">
-              <strong>No stable balances found.</strong>
-              <span>Add USDC or USDT to unlock analysis.</span>
-              {isMiniPay ? (
-                <a
-                  href="https://link.minipay.xyz/add_cash?tokens=USDm,USDC,USDT"
-                  className="primary-action"
-                  style={{ marginTop: "10px", display: "inline-block", textDecoration: "none" }}
-                >
-                  Deposit via MiniPay
-                </a>
-              ) : (
-                <span style={{ marginTop: "10px", fontSize: "13px", color: "var(--ink-55)" }}>
-                  Transfer USDC or USDT to your wallet on the Celo network.
-                </span>
-              )}
-            </div>
-          ) : null}
-
-          <div className="dashboard-section-head">
-            <p className="section-label">AI analysis</p>
-            <Link href="/copilot" className="dashboard-inline-button">Open all</Link>
-          </div>
-
-          <div className="dashboard-action-row">
-            <Link
-              href={canAnalyze ? "/copilot?action=spending-advice" : "/copilot"}
-              className="dashboard-action-card dashboard-action-card--warm"
-            >
-              <div className="dashboard-pin__icon dashboard-pin__icon--green">
-                <SpendingIcon />
-              </div>
-              <div className="dashboard-action-card__title">Spending Advice</div>
-              <div className="dashboard-pin__meta">
-                {canAnalyze ? "Where your money goes · how to save more." : "Connect wallet first."}
-              </div>
-            </Link>
-
-            <Link
-              href={canAnalyze ? "/copilot?action=wallet-audit" : "/copilot"}
-              className="dashboard-action-card dashboard-action-card--soft"
-            >
-              <div className="dashboard-pin__icon dashboard-pin__icon--amber">
-                <AuditIcon />
-              </div>
-              <div className="dashboard-action-card__title">Wallet Audit</div>
-              <div className="dashboard-pin__meta">Financial health score · risk check.</div>
-            </Link>
-
-          </div>
-
-          <div className="dashboard-insight-row">
-            <Link
-              href={canAnalyze ? "/copilot?action=account-summary" : "/copilot"}
-              className="dashboard-insight-card"
-            >
-              <div className="dashboard-insight-card__top dashboard-insight-card__top--plain">
-                <span>Account summary</span>
-              </div>
-              <div className="dashboard-monitoring">
-                <div className="dashboard-monitoring__copy">
-                  <strong>90-day view.</strong>
-                  <span>Income, spend &amp; net position.</span>
-                </div>
-              </div>
-              <small>{canAnalyze ? "AI-generated · on demand" : "Connect wallet"}</small>
-            </Link>
-
-            <Link
-              href={canAnalyze ? "/copilot?action=wallet-statement" : "/copilot"}
-              className="dashboard-insight-card"
-            >
-              <div className="dashboard-insight-card__top dashboard-insight-card__top--plain">
-                <span>Statement</span>
-              </div>
-              <div className="dashboard-monitoring">
-                <div className="dashboard-monitoring__copy">
-                  <strong>Formal export.</strong>
-                  <span>Proof of financial activity.</span>
-                </div>
-              </div>
-              <small>{canAnalyze ? "Generate any time" : "Connect wallet"}</small>
-            </Link>
-          </div>
-
-          {canAnalyze && (
-            <Link
-              href="/budget"
+          <div className="chat-empty__badges">
+            <span
+              className="chat-badge"
               style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                padding: "12px", borderRadius: "16px",
-                background: "var(--surface)", border: "1px solid var(--line)",
-                textDecoration: "none", fontSize: "13px", fontWeight: 600, color: "var(--ink-70)"
+                background: freeAudits > 0 ? "var(--green-soft)" : "var(--bg-soft)",
+                color: freeAudits > 0 ? "var(--green-ink)" : "var(--ink-55)",
+                borderColor: freeAudits > 0 ? "var(--green)" : "var(--line)",
               }}
             >
-              📊 View Spend Sheet →
-            </Link>
-          )}
-        </section>
-
-        <footer style={{ padding: "4px 16px 4px", textAlign: "center" }}>
-          <span style={{ fontSize: "11px", color: "var(--ink-40)" }}>Built on Celo · Powered by Akili AI</span>
-        </footer>
-
-        <footer style={{ padding: "8px 16px 4px", display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}>
-          {[
-            { label: "Terms", href: "/legal/terms" },
-            { label: "Privacy", href: "/legal/privacy" },
-            { label: "Support", href: "/support" },
-            { label: "Stats", href: "/stats" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{ fontSize: "0.72rem", color: "var(--ink-55)", textDecoration: "none" }}
+              {freeAudits > 0 ? `${freeAudits} free analyses` : `${AI_PRICE_DISPLAY}/analysis`}
+            </span>
+            <span
+              className="chat-badge"
+              style={{
+                background: freeChat > 0 ? "var(--green-soft)" : "var(--bg-soft)",
+                color: freeChat > 0 ? "var(--green-ink)" : "var(--ink-55)",
+                borderColor: freeChat > 0 ? "var(--green)" : "var(--line)",
+              }}
             >
-              {item.label}
-            </Link>
-          ))}
-        </footer>
+              {freeChat > 0 ? `${freeChat} free chats` : `${AI_PRICE_DISPLAY}/chat`}
+            </span>
+          </div>
+        </div>
+      )}
 
-        <BottomNav />
+      {/* ── Messages ── */}
+      {hasMessages && (
+        <div className="chat-messages">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className="message-enter"
+              style={{
+                display: "flex",
+                flexDirection: msg.role === "user" ? "column" : "row",
+                alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+                gap: msg.role === "assistant" ? "8px" : 0,
+              }}
+            >
+              {msg.role === "assistant" && <AkiliEyes />}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                <div
+                  style={{
+                    maxWidth: msg.role === "user" ? "85%" : "calc(100% - 36px)",
+                    padding: "10px 14px",
+                    borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                    background: msg.role === "user" ? "var(--ink)" : "var(--surface)",
+                    color: msg.role === "user" ? "#fffdf7" : "var(--ink)",
+                    fontSize: "14px",
+                    lineHeight: "1.55",
+                    wordBreak: "break-word",
+                    border: msg.role === "assistant" ? "1px solid var(--line)" : "none",
+                    boxShadow: msg.role === "assistant" ? "var(--shadow)" : "none",
+                  }}
+                >
+                  {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
+                </div>
+
+                {/* Follow-up suggestions */}
+                {msg.role === "assistant" && msg === messages.filter((m) => m.role === "assistant").at(-1) && !chatLoading && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px", maxWidth: "85%" }}>
+                    {(FOLLOW_UPS[msg.reportType ?? ""] ?? DEFAULT_FOLLOW_UPS).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => sendMessage(s)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "999px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                          background: "var(--bg-soft)",
+                          border: "1px solid var(--line)",
+                          color: "var(--ink-70)",
+                        }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Share */}
+                {msg.role === "assistant" && msg.content.length > 40 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.share) {
+                        void navigator.share({ title: "Akili Financial Report", text: msg.content });
+                      } else {
+                        void navigator.clipboard.writeText(msg.content).then(() => toast.success("Copied to clipboard"));
+                      }
+                    }}
+                    style={{
+                      marginTop: "4px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "4px 10px",
+                      borderRadius: "999px",
+                      background: "transparent",
+                      border: "1px solid var(--line)",
+                      color: "var(--ink-55)",
+                      fontSize: "11px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Share
+                  </button>
+                )}
+
+                {/* Statement download */}
+                {msg.role === "assistant" && msg.reportType === "wallet-statement" && address && (
+                  <button
+                    type="button"
+                    disabled={payingForId === msg.id}
+                    onClick={async () => {
+                      setPayingForId(msg.id);
+                      try {
+                        await downloadStatement(msg.content, address);
+                        toast.success("Statement ready");
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Download failed");
+                      } finally {
+                        setPayingForId(null);
+                      }
+                    }}
+                    style={{
+                      marginTop: "6px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "999px",
+                      background: "var(--surface)",
+                      border: "1px solid var(--line)",
+                      color: "var(--ink-70)",
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      cursor: payingForId === msg.id ? "not-allowed" : "pointer",
+                      boxShadow: "var(--shadow)",
+                      opacity: payingForId === msg.id ? 0.6 : 1,
+                    }}
+                  >
+                    <DownloadIcon />
+                    {payingForId === msg.id ? "Opening…" : "Download PDF"}
+                  </button>
+                )}
+
+                <div style={{ color: "var(--ink-40)", fontSize: "10px", marginTop: "4px", padding: "0 4px", display: "flex", gap: "6px" }}>
+                  <span>{formatTime(msg.timestamp)}</span>
+                  {msg.role === "assistant" && msg.content.length > 200 && (
+                    <span>&middot; {Math.ceil(msg.content.split(/\s+/).length / 200)} min read</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Loading */}
+          {chatLoading && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+              <AkiliEyes />
+              <div style={{
+                background: "var(--surface)", border: "1px solid var(--line)",
+                boxShadow: "var(--shadow)", borderRadius: "18px 18px 18px 4px",
+                padding: "12px 16px", display: "flex", gap: "4px",
+              }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{
+                    width: "6px", height: "6px", borderRadius: "50%",
+                    background: "var(--ink-40)",
+                    animation: `copilot-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                  }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Paywall */}
+          {paywallPending && !chatLoading && (
+            <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+              <AkiliEyes />
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "80%" }}>
+                <div style={{
+                  background: "var(--surface)", border: "1px solid var(--line)",
+                  boxShadow: "var(--shadow)", borderRadius: "18px 18px 18px 4px",
+                  padding: "12px 16px", fontSize: "13px", lineHeight: 1.5,
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+                    <strong>Free limit reached</strong>
+                    <button type="button" onClick={() => setPaywallPending(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-40)", fontSize: "14px", padding: "0 0 0 8px", lineHeight: 1 }}>&times;</button>
+                  </div>
+                  You&apos;ve used your {FREE_LIMIT} free {paywallPending.reportType ? "analyses" : "chat messages"}.
+                  Pay {AI_PRICE_DISPLAY} USDC to continue.
+                </div>
+                <button
+                  type="button"
+                  disabled={paying}
+                  onClick={async () => {
+                    setPaying(true);
+                    try {
+                      await payForAI();
+                      toast.success("Payment confirmed");
+                      const { content, reportType } = paywallPending;
+                      setPaywallPending(null);
+                      await executeMessage(content, reportType);
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Payment failed");
+                    } finally {
+                      setPaying(false);
+                    }
+                  }}
+                  style={{
+                    alignSelf: "flex-start", display: "inline-flex", alignItems: "center",
+                    gap: "6px", padding: "8px 16px", borderRadius: "999px",
+                    background: "var(--slab)", color: "var(--slab-ink)",
+                    border: "none", fontSize: "13px", fontWeight: 600,
+                    cursor: paying ? "not-allowed" : "pointer", opacity: paying ? 0.6 : 1,
+                  }}
+                >
+                  {paying ? "Confirming…" : `Pay ${AI_PRICE_DISPLAY} USDC`}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+      )}
+
+      {/* ── Input bar ── */}
+      <div className="chat-input-area">
+        <div className="chat-input-bar">
+          <div style={{ flex: 1, position: "relative" }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value.slice(0, 500))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              placeholder={PLACEHOLDERS[placeholderIdx]}
+              rows={1}
+              maxLength={500}
+              style={{
+                width: "100%",
+                background: "var(--surface-warm)",
+                border: "1px solid var(--line)",
+                borderRadius: "16px",
+                padding: "10px 14px",
+                color: "var(--ink)",
+                fontSize: "14px",
+                outline: "none",
+                resize: "none",
+                fontFamily: "var(--font-sans)",
+                lineHeight: "1.4",
+                boxSizing: "border-box",
+              }}
+            />
+            {input.length > 400 && (
+              <span style={{
+                position: "absolute", bottom: "6px", right: "10px",
+                fontSize: "10px", color: input.length >= 490 ? "var(--coral)" : "var(--ink-40)",
+              }}>
+                {500 - input.length}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => sendMessage(input)}
+            disabled={chatLoading || !input.trim()}
+            style={{
+              width: "40px", height: "40px", borderRadius: "50%",
+              background: chatLoading || !input.trim() ? "var(--bg-soft)" : "var(--ink)",
+              border: "1px solid var(--line)",
+              cursor: chatLoading || !input.trim() ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0, transition: "background 0.15s",
+            }}
+            aria-label="Send message"
+          >
+            <SendIcon disabled={chatLoading || !input.trim()} />
+          </button>
+        </div>
+        <div className="chat-input-privacy">Your private key never leaves your device</div>
       </div>
 
-      {/* Currency picker rendered outside overflow:hidden card so it isn't clipped */}
-      {showCurrencyPicker && (
-        <>
-          <div
-            onClick={() => setShowCurrencyPicker(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 199 }}
-          />
-          <div style={{
-            position: "fixed", top: pickerPos.top, left: pickerPos.left, zIndex: 200,
-            background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "14px",
-            padding: "6px", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-            display: "flex", flexDirection: "column", gap: "2px", minWidth: "160px"
-          }}>
-            {LOCAL_CURRENCIES.map(cur => (
-              <button
-                key={cur}
-                type="button"
-                onClick={() => {
-                  setLocalCurrency(cur);
-                  setPreferredCurrency(cur);
-                  setShowCurrencyPicker(false);
-                }}
-                style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  padding: "8px 10px", borderRadius: "10px", border: "none",
-                  background: cur === localCurrency ? "var(--bg-soft)" : "transparent",
-                  cursor: "pointer", fontSize: "13px", color: "var(--ink)", textAlign: "left"
-                }}
-              >
-                <span>{CURRENCY_META[cur].flag}</span>
-                <span style={{ fontWeight: cur === localCurrency ? 700 : 400 }}>{cur}</span>
-                <span style={{ fontSize: "11px", color: "var(--ink-40)", marginLeft: "auto" }}>{CURRENCY_META[cur].symbol}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <style>{`
+        @keyframes copilot-pulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </main>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   );
 }
