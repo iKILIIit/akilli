@@ -40,8 +40,6 @@ const QUICK_ACTIONS: QuickAction[] = [
   { label: "Account Summary", reportType: "account-summary", prompt: "Summarize my account activity for the last 90 days." },
   { label: "Wallet Audit",    reportType: "wallet-audit",    prompt: "Audit my wallet and give me a financial health score." },
   { label: "Monthly Plan",    reportType: "monthly-plan",    prompt: "Build a realistic monthly budget and savings plan based on my transaction history." },
-  { label: "Statement",       reportType: "wallet-statement", prompt: "Generate a formal wallet statement of my transactions." },
-  { label: "Remittance Cost", reportType: "remittance-analysis", prompt: "Analyze my cross-border sends and show me what they actually cost vs traditional remittance services." },
 ];
 
 const FOLLOW_UPS: Record<string, string[]> = {
@@ -455,7 +453,7 @@ function HomeInner() {
           <AkiliEyes large />
           <h1 className="chat-empty__title">What would you like to know?</h1>
           <p className="chat-empty__subtitle">
-            Analyze your wallet, get spending advice, audit your activity, or generate a statement.
+            Track your G$ UBI, analyze your wallet, get spending advice, or audit your activity.
           </p>
           {/* G$ claim banner */}
           {gdBannerVisible && address && (
