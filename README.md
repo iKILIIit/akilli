@@ -1,8 +1,40 @@
-# Akili — AI Financial Intelligence for MiniPay
+# Akili — AI Financial Intelligence for GoodDollar & MiniPay
 
 > *Akili* is the Swahili word for intelligence and wisdom. Live at **[akilii.xyz](https://akilii.xyz)**.
 
-Akili is an AI-powered financial copilot for MiniPay users. It reads any Celo wallet's on-chain transaction history — your own or others' — and gives you clear, honest, actionable insights about your money in plain language, no jargon, no spreadsheets required.
+Akili is an AI-powered financial copilot built for GoodDollar UBI members and MiniPay users. It reads any Celo wallet's on-chain transaction history, tracks your daily G$ UBI, and gives you clear, actionable insights about your money in plain language — no jargon, no spreadsheets required.
+
+---
+
+## Use Cases
+
+### G$ / GoodDollar (core)
+
+| Feature | What it does |
+|---|---|
+| **My G$ UBI** | Shows your full GoodDollar UBI claim history, how much you've earned, and claim streaks |
+| **G$ Optimizer** | Personalized advice on getting more value from your daily UBI (timing, compounding, swapping) |
+| **G$ Claim Banner** | Alerts you when you have unclaimed G$ sitting idle — shown on the home screen daily |
+| **Sidebar Balance** | Live G$ balance and "Verified" badge if you're a registered GoodDollar member |
+
+### Onchain Wallet Analysis
+
+| Feature | What it does |
+|---|---|
+| **Spending Advice** | AI reads your last 90 days of transactions and gives you personalized tips |
+| **Account Summary** | Full breakdown of inflows, outflows, and spending patterns |
+| **Wallet Audit** | Financial health score (0–100) with actionable improvements |
+| **Monthly Plan** | Budget plan built from your actual spending history |
+
+### Infrastructure
+
+| Contract | What it does |
+|---|---|
+| **AkiliCredits.sol** | Deposit your daily G$ UBI as credits; AI operations cost micro-amounts (0.02–0.10 G$), G$ analysis is always free |
+| **AkiliLog.sol** | Every AI decision is written onchain as an immutable audit trail |
+| **Free tier** | 3 free analyses + 3 free chats before credits kick in |
+
+> **Target user:** A GoodDollar member in Africa (Nigeria, Kenya, Ghana) who receives daily G$ UBI and wants intelligence around it — not just "what is my balance" but "am I claiming consistently, what am I missing, how do I use it better."
 
 ---
 
