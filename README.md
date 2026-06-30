@@ -157,6 +157,8 @@ packages/
 | Contract | Address | Network |
 |---|---|---|
 | AkiliEscrow | [`0xcCa0A1CF96f41f467E0E5D52d89003C1F77503B6`](https://celoscan.io/address/0xcCa0A1CF96f41f467E0E5D52d89003C1F77503B6) | Celo Mainnet |
+| AkiliLog | [`0xbc84e6000869E08837ecAd0a26D43f7731982E8F`](https://celoscan.io/address/0xbc84e6000869E08837ecAd0a26D43f7731982E8F) | Celo Mainnet |
+| AkiliCredits | [`0xE298A7EBd294Ba20474d0f259B2a00F776DCE4E2`](https://celoscan.io/address/0xE298A7EBd294Ba20474d0f259B2a00F776DCE4E2) | Celo Mainnet |
 | ERC-8004 Agent Registration | [`0xda007d57...`](https://celoscan.io/tx/0xda007d57e9c8f7ac65cc49e86175ea363ac42f2a8df30fb5c57cabe599c96d7a) | Celo Mainnet |
 
 **GoodDollar contracts integrated (not deployed by us):**

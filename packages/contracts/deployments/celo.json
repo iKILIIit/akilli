@@ -13,6 +13,19 @@
       "executor": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
       "celoscan": "https://celoscan.io/address/0xcCa0A1CF96f41f467E0E5D52d89003C1F77503B6",
       "deployedAt": "2026-06-15"
+    },
+    "AkiliLog": {
+      "address": "0xbc84e6000869E08837ecAd0a26D43f7731982E8F",
+      "owner": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
+      "celoscan": "https://celoscan.io/address/0xbc84e6000869E08837ecAd0a26D43f7731982E8F",
+      "deployedAt": "2026-06-30"
+    },
+    "AkiliCredits": {
+      "address": "0xE298A7EBd294Ba20474d0f259B2a00F776DCE4E2",
+      "agent": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
+      "owner": "0xC6312ea8305Ea85c0ed26E608eD21e5C6A4Ad24b",
+      "celoscan": "https://celoscan.io/address/0xE298A7EBd294Ba20474d0f259B2a00F776DCE4E2",
+      "deployedAt": "2026-06-30"
     }
   },
   "erc8004": {
