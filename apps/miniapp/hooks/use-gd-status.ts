@@ -61,9 +61,9 @@ export function useGDStatus(walletAddress?: string): GDStatusResult & { refresh:
       const isVerified     = results[2]?.status === "success" ? (results[2].result as boolean) : false;
 
       setState({
-        gdBalance:      formatUnits(gdBalanceRaw, 2),
+        gdBalance:      formatUnits(gdBalanceRaw, 18),
         gdBalanceRaw,
-        entitlement:    formatUnits(entitlementRaw, 2),
+        entitlement:    formatUnits(entitlementRaw, 18),
         entitlementRaw,
         isVerified,
         hasUnclaimed:   entitlementRaw > 0n,

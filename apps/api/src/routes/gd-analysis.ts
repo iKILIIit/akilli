@@ -110,8 +110,11 @@ export async function handleGDClaims(address: string, query: Record<string, stri
   const days = Math.min(365, Math.max(1, parseInt(query.days ?? "90", 10) || 90));
   const claims = await fetchUBIClaimHistory(address, days);
 
-  const totalRaw = claims.reduce((sum, c) => sum + c.amountRaw, 0n);
-  const totalFormatted = (Number(totalRaw) / 100).toFixed(2);
+  const totalRaw   = claims.reduce((sum, c) => sum + c.amountRaw, 0n);
+  const GD_DIVISOR = 10n ** 18n;
+  const whole      = totalRaw / GD_DIVISOR;
+  const remainder  = totalRaw % GD_DIVISOR;
+  const totalFormatted = (Number(whole) + Number(remainder) / Number(GD_DIVISOR)).toFixed(2);
 
   // Streak: count consecutive days from most-recent claim backward using real dates.
   // GoodDollar distributes UBI once per day keyed by UTC date, so UTC dates are correct.

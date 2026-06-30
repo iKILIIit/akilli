@@ -17,7 +17,7 @@ const KNOWN_DECIMALS: Record<string, number> = {
   "0x765de816845861e75a25fca122bb6898b8b1282a": 18,  // cUSD
   "0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73": 18,  // cEUR
   "0xe8537a3d056da446677b9e9d6c5db704eaab4787": 18,  // cREAL
-  "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a": 2,   // G$
+  "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a": 18,  // G$ (18 decimals on Celo mainnet)
 };
 
 // Label any recognised protocol address

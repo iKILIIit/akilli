@@ -245,9 +245,14 @@ export async function getGDProtocolStats(): Promise<GDProtocolStats> {
 
 // ── Internals ─────────────────────────────────────────────────────────────────
 
-// G$ has 2 decimals on Celo
+// G$ has 18 decimals on Celo mainnet (confirmed via decimals() call)
+const GD_DECIMALS = 18n;
+const GD_DIVISOR  = 10n ** GD_DECIMALS;
+
 function formatGD(raw: bigint): string {
-  return (Number(raw) / 100).toFixed(2);
+  const whole     = raw / GD_DIVISOR;
+  const remainder = raw % GD_DIVISOR;
+  return (Number(whole) + Number(remainder) / Number(GD_DIVISOR)).toFixed(2);
 }
 
 // Celo produces ~1 block every 5 seconds → 17,280 blocks/day
