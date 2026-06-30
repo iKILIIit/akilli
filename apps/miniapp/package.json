@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.8",
+    "@vercel/kv": "^3.0.0",
     "@yield-copilot/agents": "workspace:*",
     "@yield-copilot/celo": "workspace:*",
     "@yield-copilot/shared": "workspace:*",
@@ -23,12 +24,14 @@
     "thirdweb": "^5.120.0",
     "viem": "^2.21.53",
     "wagmi": "^2.15.6",
+    "web-push": "^3.6.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/web-push": "^3.6.4",
     "critters": "^0.0.25",
     "typescript": "^5.8.3"
   },
