@@ -3,6 +3,7 @@ import { fetchWalletData } from "../../../lib/celo-transactions";
 import { researchAddress } from "../../../lib/linkup";
 import { generateWalletReport } from "@yield-copilot/agents";
 import { rateLimit, getClientKey } from "../../../lib/rate-limit";
+import { getGDStatus } from "@yield-copilot/celo";
 import { z } from "zod";
 import { createWalletClient, createPublicClient, http, parseAbi } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -74,9 +75,23 @@ export async function POST(request: NextRequest) {
 
     const wallet = await fetchWalletData(walletAddress, days);
 
-    // research any unknown contracts via Linkup to enrich the report
+    // For G$ report types, fetch live balance and entitlement from chain
+    // so the AI has the real current balance — not just the transaction-derived total
     let linkupContext: string | undefined;
-    if (wallet.unknownContracts.length > 0) {
+    if (reportType === "gd-ubi-history" || reportType === "gd-ubi-optimize") {
+      try {
+        const gd = await getGDStatus(walletAddress);
+        linkupContext = [
+          `LIVE G$ DATA (on-chain, as of now):`,
+          `Current G$ wallet balance: ${gd.gdBalance} G$`,
+          `Claimable today (entitlement): ${gd.entitlement} G$`,
+          `GoodDollar verified: ${gd.isVerified ? "Yes" : "No"}`,
+        ].join("\n");
+      } catch { /* non-fatal — report still works without it */ }
+    }
+
+    // research any unknown contracts via Linkup to enrich non-GD reports
+    if (!linkupContext && wallet.unknownContracts.length > 0) {
       const researched = await Promise.all(
         wallet.unknownContracts.slice(0, 3).map(addr => researchAddress(addr))
       );

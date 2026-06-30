@@ -10,6 +10,16 @@ const KNOWN_TOKENS: Record<string, string> = {
   "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a": "G$"
 };
 
+// Hardcoded decimals for known tokens — don't trust tokenDecimal from Blockscout
+const KNOWN_DECIMALS: Record<string, number> = {
+  "0xceba9300f2b948710d2653dd7b07f33a8b32118c": 6,   // USDC
+  "0x617f3112bf5397d0467d315cc709ef968d9ba546": 6,   // USDT
+  "0x765de816845861e75a25fca122bb6898b8b1282a": 18,  // cUSD
+  "0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73": 18,  // cEUR
+  "0xe8537a3d056da446677b9e9d6c5db704eaab4787": 18,  // cREAL
+  "0x62b8b11039fcfe5ab0c56e502b1c372a3d2a9c7a": 2,   // G$
+};
+
 // Label any recognised protocol address
 const KNOWN_CONTRACTS: Record<string, string> = {
   // MiniPay Boost / savings yield — interest payments come from here
@@ -120,7 +130,8 @@ function parseTx(tx: CeloTransaction, walletAddress: string, isTokenTx = false):
   const token = tx.tokenSymbol ??
     (KNOWN_TOKENS[tx.contractAddress?.toLowerCase() ?? ""] ?? "CELO");
 
-  const decimals = tx.tokenDecimal ? Number(tx.tokenDecimal) : 18;
+  const contractKey = tx.contractAddress?.toLowerCase() ?? "";
+  const decimals = KNOWN_DECIMALS[contractKey] ?? (tx.tokenDecimal ? Number(tx.tokenDecimal) : 18);
   const amount = formatAmount(tx.value || "0", decimals);
 
   const counterparty = isIncoming ? (tx.from ?? "") : (tx.to ?? "");
