@@ -14,7 +14,7 @@ async function main() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
   const agentURI =
     process.env.AGENT_URI ??
-    "https://akilii-minipay.vercel.app/agent.json";
+    "https://akilii.xyz/agent.json";
 
   if (!privateKey) {
     throw new Error(

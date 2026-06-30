@@ -113,19 +113,31 @@ export async function handleGDClaims(address: string, query: Record<string, stri
   const totalRaw = claims.reduce((sum, c) => sum + c.amountRaw, 0n);
   const totalFormatted = (Number(totalRaw) / 100).toFixed(2);
 
-  // Streak: count consecutive days from most-recent claim backward
-  const claimDates = new Set(
-    claims.map(c => {
-      // approximate date from blockNumber — close enough for streak display
-      return c.transactionHash; // placeholder until we have block timestamps
-    })
-  );
+  // Streak: count consecutive days from most-recent claim backward using real dates
+  const claimDates = new Set(claims.map(c => c.date).filter(Boolean));
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (claimDates.has(key)) {
+      streak++;
+    } else if (i > 0) {
+      break; // gap found — streak ends
+    }
+  }
+
+  // Missed days: days in the period with no claim
+  const missedDays = days - claimDates.size;
 
   return {
     address,
     periodDays: days,
     claimCount: claims.length,
     totalGDClaimed: totalFormatted,
+    currentStreak: streak,
+    missedDays: Math.max(0, missedDays),
     claims,
     fetchedAt: new Date().toISOString()
   };

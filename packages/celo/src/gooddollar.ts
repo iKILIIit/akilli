@@ -113,6 +113,8 @@ export type UBIClaimEvent = {
   amountRaw: bigint;
   transactionHash: string;
   blockNumber: number;
+  date: string;              // YYYY-MM-DD from Blockscout
+  timestamp: number;         // unix seconds
 };
 
 export type GDProtocolStats = {
@@ -175,16 +177,53 @@ export async function fetchUBIClaimHistory(
 
   if (json.error || !Array.isArray(json.result)) return [];
 
+  // Fetch block timestamps from Blockscout for accurate dates
+  const blockNumbers = [...new Set(json.result.map(l => parseInt(l.blockNumber, 16)))];
+  const blockTimestamps = await fetchBlockTimestamps(blockNumbers);
+
   return json.result.map(log => {
     const amountRaw = decodeUint256(log.data);
+    const blockNumber = parseInt(log.blockNumber, 16);
+    const timestamp = blockTimestamps.get(blockNumber) ?? 0;
+    const date = timestamp
+      ? new Date(timestamp * 1000).toISOString().slice(0, 10)
+      : "";
     return {
       claimer: walletAddress,
       amount: formatGD(amountRaw),
       amountRaw,
       transactionHash: log.transactionHash,
-      blockNumber: parseInt(log.blockNumber, 16)
+      blockNumber,
+      date,
+      timestamp,
     };
   });
+}
+
+// Fetch block timestamps via Blockscout API (batched, unique blocks only)
+async function fetchBlockTimestamps(blockNumbers: number[]): Promise<Map<number, number>> {
+  const map = new Map<number, number>();
+  // Blockscout supports eth_getBlockByNumber — batch via individual calls in parallel (max 10)
+  const slice = blockNumbers.slice(0, 10);
+  await Promise.all(slice.map(async (bn) => {
+    try {
+      const res = await fetch(CELO_RPC, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: bn,
+          method: "eth_getBlockByNumber",
+          params: ["0x" + bn.toString(16), false]
+        }),
+        signal: AbortSignal.timeout(RPC_TIMEOUT_MS)
+      });
+      const json = (await res.json()) as { result?: { timestamp: string } };
+      if (json.result?.timestamp) {
+        map.set(bn, parseInt(json.result.timestamp, 16));
+      }
+    } catch { /* skip — date will be empty */ }
+  }));
+  return map;
 }
 
 export async function getGDProtocolStats(): Promise<GDProtocolStats> {

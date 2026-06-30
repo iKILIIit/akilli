@@ -30,7 +30,7 @@
   },
   "erc8004": {
     "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-    "agentURI": "https://akilii-minipay.vercel.app/agent.json",
+    "agentURI": "https://akilii.xyz/agent.json",
     "registrationTx": "0xda007d57e9c8f7ac65cc49e86175ea363ac42f2a8df30fb5c57cabe599c96d7a",
     "block": 67279823,
     "celoscan": "https://celoscan.io/tx/0xda007d57e9c8f7ac65cc49e86175ea363ac42f2a8df30fb5c57cabe599c96d7a"
