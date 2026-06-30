@@ -1,9 +1,6 @@
 // Verified Celo mainnet contract addresses for Akili
 
 export const ADDRESSES = {
-  // Akili deployed contracts
-  POLICY_ROUTER: "0x0c0345b3DFBFFD4300255F9DB933A4751cCD2124" as `0x${string}`,
-
   // ERC-8004 agent identity registry
   ERC8004_REGISTRY: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as `0x${string}`,
 
