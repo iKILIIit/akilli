@@ -345,7 +345,7 @@ export default function AuditPage() {
             {paying ? "Paying…" : loading ? "Auditing wallet…" : freeRemaining > 0 ? "Audit wallet (free)" : `Audit wallet (${TRAIL_PRICE_DISPLAY})`}
           </button>
           <p style={{ fontSize: "11px", color: "var(--ink-40)", textAlign: "center", margin: 0 }}>
-            {TRAIL_FREE_LIMIT} free audit · {TRAIL_PRICE_DISPLAY} USDC after · any public Celo wallet
+            {TRAIL_FREE_LIMIT} free audit · {TRAIL_PRICE_DISPLAY} after · any public Celo wallet
           </p>
         </div>
 

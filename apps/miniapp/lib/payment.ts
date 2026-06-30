@@ -2,37 +2,27 @@
 
 import { encodeFunctionData, parseUnits } from "viem";
 
-const USDC_ADDRESS = "0xcebA9300f2b948710d2653dD7B07f33A8B32118C" as `0x${string}`;
-const USDT_ADDRESS = "0x617f3112bf5397D0467D315cC709EF968D9ba546" as `0x${string}`;
+// G$ token on Celo mainnet (2 decimals)
+const GD_TOKEN_ADDRESS = "0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A" as `0x${string}`;
 
 export const FREE_LIMIT = 3;
-export const AI_PRICE_USDC = parseUnits("0.002", 6);
-export const AI_PRICE_DISPLAY = "$0.002";
+export const AI_PRICE_GD  = parseUnits("0.10", 2);   // 0.10 G$
+export const AI_PRICE_DISPLAY = "0.10 G$";
 
 const AUDITS_KEY = "akili_audits_used";
-const CHAT_KEY = "akili_chat_used";
-const TRAIL_KEY = "akili_trail_used";
+const CHAT_KEY   = "akili_chat_used";
+const TRAIL_KEY  = "akili_trail_used";
 
-export const TRAIL_FREE_LIMIT = 1;
-export const TRAIL_PRICE_USDC = parseUnits("0.01", 6);
-export const TRAIL_PRICE_DISPLAY = "$0.01";
-
-const BALANCE_OF_ABI = [
-  {
-    name: "balanceOf",
-    type: "function",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-] as const;
+export const TRAIL_FREE_LIMIT    = 1;
+export const TRAIL_PRICE_GD      = parseUnits("0.50", 2);  // 0.50 G$
+export const TRAIL_PRICE_DISPLAY = "0.50 G$";
 
 const TRANSFER_ABI = [
   {
     name: "transfer",
     type: "function",
     inputs: [
-      { name: "to", type: "address" },
+      { name: "to",     type: "address" },
       { name: "amount", type: "uint256" },
     ],
     outputs: [{ name: "", type: "bool" }],
@@ -101,14 +91,14 @@ export async function payForAI(): Promise<string> {
   const data = encodeFunctionData({
     abi: TRANSFER_ABI,
     functionName: "transfer",
-    args: [recipient, AI_PRICE_USDC],
+    args: [recipient, AI_PRICE_GD],
   });
 
   const txHash = await ethereum.request({
     method: "eth_sendTransaction",
     params: [{
       from: accounts[0],
-      to: USDC_ADDRESS,
+      to: GD_TOKEN_ADDRESS,
       data,
       value: "0x0",
     }],
@@ -127,33 +117,17 @@ export async function payForTrail(): Promise<string> {
   const accounts = await ethereum.request({ method: "eth_accounts" }) as string[];
   if (!accounts?.[0]) throw new Error("Wallet not connected.");
 
-  // Prefer USDT; fall back to USDC if balance is insufficient
-  const balanceData = encodeFunctionData({
-    abi: BALANCE_OF_ABI,
-    functionName: "balanceOf",
-    args: [accounts[0] as `0x${string}`],
-  });
-
-  let tokenAddress = USDC_ADDRESS;
-  try {
-    const hex = await ethereum.request({
-      method: "eth_call",
-      params: [{ to: USDT_ADDRESS, data: balanceData }, "latest"],
-    }) as string;
-    if (BigInt(hex) >= TRAIL_PRICE_USDC) tokenAddress = USDT_ADDRESS;
-  } catch { /* fall back to USDC */ }
-
   const data = encodeFunctionData({
     abi: TRANSFER_ABI,
     functionName: "transfer",
-    args: [recipient, TRAIL_PRICE_USDC],
+    args: [recipient, TRAIL_PRICE_GD],
   });
 
   const txHash = await ethereum.request({
     method: "eth_sendTransaction",
     params: [{
       from: accounts[0],
-      to: tokenAddress,
+      to: GD_TOKEN_ADDRESS,
       data,
       value: "0x0",
     }],

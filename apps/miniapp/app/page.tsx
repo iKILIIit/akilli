@@ -699,7 +699,7 @@ function HomeInner() {
                     <button type="button" onClick={() => setPaywallPending(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-40)", fontSize: "14px", padding: "0 0 0 8px", lineHeight: 1 }}>&times;</button>
                   </div>
                   You&apos;ve used your {FREE_LIMIT} free {paywallPending.reportType ? "analyses" : "chat messages"}.
-                  Pay {AI_PRICE_DISPLAY} USDC to continue.
+                  Pay {AI_PRICE_DISPLAY} to continue.
                 </div>
                 <button
                   type="button"
@@ -726,7 +726,7 @@ function HomeInner() {
                     cursor: paying ? "not-allowed" : "pointer", opacity: paying ? 0.6 : 1,
                   }}
                 >
-                  {paying ? "Confirming…" : `Pay ${AI_PRICE_DISPLAY} USDC`}
+                  {paying ? "Confirming…" : `Pay ${AI_PRICE_DISPLAY}`}
                 </button>
               </div>
             </div>
