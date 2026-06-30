@@ -1,8 +1,8 @@
-# Akili — AI Financial Intelligence for GoodDollar & MiniPay
+# Akili — AI Financial Intelligence for GoodDollar
 
 > *Akili* is the Swahili word for intelligence and wisdom. Live at **[akilii.xyz](https://akilii.xyz)**.
 
-Akili is an AI-powered financial copilot built for GoodDollar UBI members and MiniPay users. It reads any Celo wallet's on-chain transaction history, tracks your daily G$ UBI, and gives you clear, actionable insights about your money in plain language — no jargon, no spreadsheets required.
+Akili is an AI-powered financial copilot built for GoodDollar UBI members. It reads any Celo wallet's on-chain transaction history, tracks your daily G$ UBI, and gives you clear, actionable insights about your money in plain language — no jargon, no spreadsheets required.
 
 ---
 
@@ -40,30 +40,30 @@ Akili is an AI-powered financial copilot built for GoodDollar UBI members and Mi
 
 ## The Problem
 
-Millions of people use MiniPay to hold and move stablecoins daily. But most of them have no visibility into their own financial behaviour. They can see individual transactions, but they cannot answer basic questions like:
+Millions of people in Africa receive GoodDollar UBI daily on Celo but have no visibility into their own financial behaviour. They can see individual transactions, but they cannot answer basic questions like:
 
+- *How much G$ have I claimed this month?*
+- *Am I missing out by not claiming daily?*
 - *Where did my money actually go this month?*
-- *Am I spending more than I earn?*
-- *Are there any suspicious interactions on my wallet?*
 - *What would a realistic savings plan look like for me?*
 
-Traditional banking apps offer dashboards and analytics — MiniPay users have had nothing equivalent. Akili closes that gap.
+Traditional banking apps offer dashboards and analytics — GoodDollar members have had nothing equivalent. Akili closes that gap.
 
 ---
 
 ## What Akili Does
 
-Akili reads any Celo wallet's transaction history via Celoscan and uses Claude via OpenRouter to generate six types of financial intelligence, plus a live FX rates panel:
+Akili reads any Celo wallet's transaction history via Celoscan and uses Claude via OpenRouter to generate financial intelligence reports plus a live FX rates panel:
 
 | Feature | What it does |
 |---|---|
+| **My G$ UBI** | Full UBI claim history, earnings, and streak analysis |
+| **G$ Optimizer** | Personalized advice to maximise your daily UBI value |
 | **Spending Advice** | 3–5 specific, data-backed tips to cut waste and save more |
 | **Account Summary** | A friendly bank-statement-style summary of money in vs. out |
 | **Wallet Audit** | A 0–100 health score across spending discipline, fee efficiency, and risk |
-| **Wallet Statement** | A formal, downloadable record of all transactions — useful as proof of financial activity |
 | **Monthly Plan** | A personalised budget built from your actual income and spending patterns |
-| **Remittance Cost Audit** | Compares your cross-border sends against Western Union and bank wire costs |
-| **Live FX Rates** | Real-time NGN/KES/GHS/ZAR rates with trend arrows, quick converter, and send route advisory |
+| **Live FX Rates** | Real-time NGN/KES/GHS/ZAR rates with trend arrows and send route advisory |
 | **FX Rate Alerts** | Set a target rate and get notified when it's reached |
 
 Beyond reports, Akili has a **live chat interface** — you can ask it anything about any wallet in natural language and it answers using real on-chain data.
@@ -72,16 +72,16 @@ Beyond reports, Akili has a **live chat interface** — you can ask it anything 
 
 ## Use Case: Amara in Lagos
 
-Amara receives her freelance payments in USDC on Celo via MiniPay. She sends money home to Abuja weekly and at the end of the month has no idea where most of it went.
+Amara is a GoodDollar member who receives G$ daily. She sends stablecoin payments and at the end of the month has no idea where most of it went.
 
 She opens Akili, connects her wallet, and within seconds gets:
 
-1. A **Spending Advice** report showing she's paid $4.80 in gas fees on micro-transactions that could have been batched — saving her ~$3/month
-2. An **Account Summary** revealing she received $340 USDC but sent $310 — a thin $30 buffer with no savings
-3. A **Wallet Audit** scoring her 54/100 — flagging two unknown contract interactions she didn't recognise
-4. A **Monthly Plan** suggesting she set aside $40/month automatically before spending, based on her average monthly income
-5. A downloadable **Wallet Statement** she can show as proof of income to a micro-lender
-6. A **Live FX panel** showing NGN rates in real time, with an alert set for when NGN hits her target rate
+1. A **My G$ UBI** report showing she's claimed 18 out of 30 days — missing 12 days of free income
+2. A **G$ Optimizer** tip suggesting she claim every morning before 9am when the daily pool resets
+3. A **Spending Advice** report showing she's paid $4.80 in gas fees on micro-transactions that could have been batched
+4. An **Account Summary** revealing she received $340 USDC but sent $310 — a thin $30 buffer with no savings
+5. A **Wallet Audit** scoring her 54/100 — flagging two unknown contract interactions she didn't recognise
+6. A **Monthly Plan** suggesting she set aside $40/month automatically before spending
 
 None of this required a bank account, a credit bureau, or a financial advisor. Just a wallet address.
 
@@ -89,15 +89,19 @@ None of this required a bank account, a credit bureau, or a financial advisor. J
 
 ## Why Akili Is a Great Agent
 
-### 1. Real On-Chain Context, Not Generic Advice
+### 1. G$ Native Intelligence
+
+Akili treats G$ transactions correctly — income from the UBI contract is never classified as spending, idle G$ is flagged like uncollected interest, and every report is aware of the user's GoodDollar verification status.
+
+### 2. Real On-Chain Context, Not Generic Advice
 
 Most AI financial tools give generic advice based on categories you manually enter. Akili reads actual blockchain transactions — real amounts, real counterparties, real dates. The advice is specific to the wallet, not a template.
 
-### 2. Audit Any Wallet
+### 3. Audit Any Wallet
 
 You're not limited to your own wallet. Paste any Celo address and Akili will analyse it — useful for due diligence, research, or helping someone else understand their finances.
 
-### 3. Registered On-Chain Agent Identity (ERC-8004)
+### 4. Registered On-Chain Agent Identity (ERC-8004)
 
 Akili is registered as a verifiable on-chain agent via the **ERC-8004** identity registry on Celo mainnet:
 
@@ -107,13 +111,13 @@ Akili is registered as a verifiable on-chain agent via the **ERC-8004** identity
 
 This gives Akili a cryptographically verifiable identity on-chain — other protocols, wallets, and agent frameworks can discover and verify Akili's capabilities without trusting a centralised registry.
 
-### 4. Deep Research via Linkup
+### 5. Deep Research via Linkup
 
 Akili augments wallet analysis with live external research using the **Linkup API** — pulling in DeFi protocol context, token risk signals, or broader market information to enrich its reports beyond raw transaction data.
 
-### 5. Works Inside MiniPay
+### 6. Mobile-First PWA on Celo
 
-The entire frontend is a Next.js 15 Progressive Web App designed for MiniPay's in-app browser. It auto-detects and connects the MiniPay wallet provider, handles safe-area insets for mobile, and renders cleanly on a 390px screen. No separate wallet connection flow required.
+The entire frontend is a Next.js 15 Progressive Web App optimised for mobile. It auto-detects and connects any EIP-1193 wallet on Celo, handles safe-area insets, and renders cleanly on a 390px screen.
 
 ---
 
@@ -121,27 +125,29 @@ The entire frontend is a Next.js 15 Progressive Web App designed for MiniPay's i
 
 ```
 apps/
-  miniapp/          Next.js 15 App Router — MiniPay PWA frontend
+  miniapp/          Next.js 15 App Router — Akili PWA frontend
     app/
-      copilot/           AI chat + insights UI (charts, download, tab switching)
-      fx/                Live FX rates, converter, and alerts UI
       api/
+        report/          Wallet analysis + G$ report endpoint
         chat/            Streaming chat endpoint
-        insights/        Wallet analysis endpoint
-        wallet/          Celoscan transaction fetcher
         fx/              Server-side FX rate proxy (1-hour revalidation)
     lib/
       celo-transactions  On-chain tx parsing and labelling
       linkup.ts          Linkup deep research client
       fx-alerts.ts       FX alert CRUD (localStorage)
+    hooks/
+      use-gd-status.ts   viem multicall hook for live G$ balance + entitlement
 
 packages/
   agents/           Claude wallet analyst — reports + chat (via OpenRouter)
-  celo/             Token config and Celo helpers
+  celo/             GoodDollar contract helpers, token config
+    src/
+      gooddollar.ts  getGDStatus, fetchUBIClaimHistory, getGDProtocolStats
   shared/           Zod schemas, types, constants
   contracts/        Solidity — deployed on Celo mainnet
-    scripts/
-      register-erc8004.ts  Viem-based ERC-8004 agent registration
+    src/
+      AkiliCredits.sol   G$ credit system for AI operations
+      AkiliLog.sol       Onchain immutable decision audit trail
 ```
 
 ---
@@ -151,6 +157,8 @@ packages/
 | Contract | Address | Network |
 |---|---|---|
 | ERC-8004 Registry | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://celoscan.io/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) | Celo Mainnet |
+| GoodDollar Token (G$) | [`0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A`](https://celoscan.io/address/0x62B8B11039FcfE5aB0C56E502b1C372A3d2a9c7A) | Celo Mainnet |
+| GoodDollar UBI Scheme | [`0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1`](https://celoscan.io/address/0x43d72Ff17701B2DA814620735C39C620Ce0ea4A1) | Celo Mainnet |
 
 ---
 
@@ -160,13 +168,13 @@ packages/
 
 - Node.js 20+
 - pnpm 9+
-- A MiniPay wallet or any EIP-1193 wallet on Celo
+- Any EIP-1193 wallet on Celo
 
 ### Install
 
 ```bash
-git clone https://github.com/gidson5/minipay-yield-decision-Agent.git
-cd minipay-yield-decision-Agent
+git clone https://github.com/gidson5/AKILII.git
+cd AKILII
 pnpm install
 ```
 
@@ -186,7 +194,7 @@ LINKUP_API_KEY=...
 pnpm dev
 ```
 
-The MiniPay frontend runs at `http://localhost:3000`.
+The Akili frontend runs at `http://localhost:3000`.
 
 ---
 
@@ -198,6 +206,7 @@ The MiniPay frontend runs at `http://localhost:3000`.
 | AI | Claude (claude-sonnet-4-6) via OpenRouter |
 | Research | Linkup Deep Research API |
 | Blockchain | Celo Mainnet, Viem, Celoscan API |
+| GoodDollar | UBIScheme, Identity, G$ token contracts |
 | FX Data | open.er-api.com (server-cached, 1-hour revalidation) |
 | Agent Identity | ERC-8004 on-chain registry |
 | Package Manager | pnpm workspaces |
